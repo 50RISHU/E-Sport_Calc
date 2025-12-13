@@ -11,6 +11,7 @@
 	let menuOpen = false;
 	const toggleMenu = () => (menuOpen = !menuOpen);
 
+	const calc = () => dispatch('calc', id);
 	const edit = () => dispatch('edit', id);
 	const del = () => dispatch('delete', id);
 </script>
@@ -28,6 +29,8 @@
 	<!-- Desktop Icons -->
 	{#if !disableAction}
 		<div class="hidden md:flex gap-3 text-xl">
+			<i class="bi bi-calculator text-green-600 cursor-pointer hover:text-green-800" on:click={calc}
+			></i>
 			<i
 				class="bi bi-pencil-square text-blue-600 cursor-pointer hover:text-blue-800"
 				on:click={edit}
@@ -46,6 +49,8 @@
 				<div
 					class="absolute right-0 top-8 bg-white shadow-md rounded-md w-32 py-1 z-20 border animate-slideDown"
 				>
+					<button class="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+					on:click={calc}> <i class="bi bi-calculator text-green-600"></i> Calculate </button>
 					<button
 						class="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
 						on:click={edit}

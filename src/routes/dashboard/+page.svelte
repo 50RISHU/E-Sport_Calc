@@ -36,8 +36,8 @@
         selectedTournament = null;
     };
 
-    const calculatePoints = () => {
-        goto(`/tournament/${selectedTournament?.id}/calculate-points`);
+    const calculatePoints = (t: Tournament) => {
+        goto(`/tournament/${t.id}/calculate-points`);
     }
 </script>
 
@@ -63,6 +63,7 @@
                 disableAction={false}
                 on:edit={() => openDetails(t)} 
                 on:delete={(e) => deleteTournament(e.detail)}
+                on:calc={() => calculatePoints(t)}
             />
         {/each}
     </div>
@@ -144,14 +145,14 @@
                     Close
                 </button>
             </div>
-            <div class="w-full max-w-3xl">
+            <!-- <div class="w-full max-w-3xl">
                 <button
                     on:click={calculatePoints}
                     class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-black rounded text-sm"
                 >
                     Calculate Points
                 </button>
-            </div>
+            </div> -->
         </div>
     </div>
 {/if}

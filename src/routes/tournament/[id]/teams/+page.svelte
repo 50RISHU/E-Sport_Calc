@@ -4,7 +4,7 @@
 	import { tournamentStore, type Tournament } from "$lib/stores/tournamentStore";
 	import TeamCard from "$lib/components/TeamCard.svelte";
 	import { derived } from "svelte/store";
-	import { fade, fly } from "svelte/transition"; // Added transition imports
+	import { fade, fly } from "svelte/transition"; 
 
 	let id = "";
 	let tournament: Tournament | null = null;
@@ -27,14 +27,13 @@
 
 	const unsubscribe = activeTournament.subscribe((v) => {
 		tournament = v;
-		// Reset selected group to A if tournament loads and group is invalid
 		if (tournament?.roundRobin && !selectedGroup) {
 			selectedGroup = "A";
 		}
 	});
 	onDestroy(unsubscribe);
 
-	// 3️⃣ Helper to Generate Group Labels (A, B, C...) based on count
+	// 3️⃣ Helper to Generate Group Labels
 	$: groupLabels = tournament?.roundRobin
 		? Array.from({ length: tournament.groupCount }, (_, i) => String.fromCharCode(65 + i))
 		: [];
@@ -58,8 +57,7 @@
 
 	function validateTeam(): string | null {
 		if (!teamName.trim()) return "Team name is required.";
-		const filled = teamPlayers.filter((p) => p.trim());
-		if (filled.length < 1) return "At least one player required.";
+		// Removed check for filled.length < 1 to make players optional
 		return null;
 	}
 
@@ -73,8 +71,8 @@
 			name: teamName.trim(),
 			tag: teamTag.trim(),
 			logo: teamLogoFile ? URL.createObjectURL(teamLogoFile) : null,
-			// Store group only if Round Robin is enabled
 			group: tournament.roundRobin ? selectedGroup : null, 
+			// Filter out empty strings, sending an empty array is now valid
 			players: teamPlayers.filter((p) => p.trim())
 		};
 
@@ -87,7 +85,6 @@
 		teamTag = "";
 		teamPlayers = [""];
 		teamLogoFile = null;
-		// Keep the selected group same for faster data entry, or reset to A
 	}
 	
 	function deleteTeam(teamId: string) {
@@ -177,7 +174,7 @@
 				{/if}
 
 				<div>
-					<label class="text-sm font-medium">Players (Max 8)</label>
+					<label class="text-sm font-medium">Players (Optional - Max 8)</label>
 					<div class="space-y-2 mt-2">
 						{#each teamPlayers as p, i}
 							<div class="flex gap-2">
