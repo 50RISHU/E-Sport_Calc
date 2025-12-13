@@ -92,7 +92,6 @@
 </div>
 
 <style>
-	/* Simple float animation for the logo */
 	@keyframes float {
 		0% { transform: translateY(0px); }
 		50% { transform: translateY(-15px); }
