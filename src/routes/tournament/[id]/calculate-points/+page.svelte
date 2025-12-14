@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { tournamentStore, type Tournament, type MatchResult } from '$lib/stores/tournamentStore';
 	import { onDestroy } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 
 	// --- STATE ---
 	let tournament: Tournament | null = null;
@@ -17,7 +17,7 @@
 
 	// Image Viewer State
 	let viewingImage: string | null = null;
-	let zoomLevel = 1;
+	let zoomLevel = 1; // 1 = 100% width, 2 = 200% width, etc.
 
 	// Display Interface
 	interface DisplayEntry extends MatchResult {
@@ -164,11 +164,11 @@
 	}
 
 	function zoomIn() {
-		if (zoomLevel < 5) zoomLevel += 0.5;
+		if (zoomLevel < 3) zoomLevel += 0.5; // Cap at 3x
 	}
 
 	function zoomOut() {
-		if (zoomLevel > 0.5) zoomLevel -= 0.5;
+		if (zoomLevel > 1) zoomLevel -= 0.5; // Cap at 1x
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -340,28 +340,28 @@
 {#if viewingImage}
 	<div 
 		class="fixed inset-0 z-50 bg-black/95 flex flex-col"
-		transition:fade={{ duration: 200 }}
+		transition:fade={{ duration: 150 }}
 	>
-		<div class="flex justify-between items-center p-4 text-white bg-black/50 backdrop-blur-sm z-10">
+		<div class="flex justify-between items-center p-4 bg-black/50 backdrop-blur-sm z-20 shadow-sm text-white border-b border-white/10">
 			<h2 class="font-bold text-lg">Reference View</h2>
-			<div class="flex items-center gap-4">
-				<div class="flex items-center gap-1 bg-white/20 rounded-lg p-1">
-					<button on:click={zoomOut} class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded font-bold text-xl" title="Zoom Out">−</button>
-					<span class="w-12 text-center font-mono text-sm">{Math.round(zoomLevel * 100)}%</span>
-					<button on:click={zoomIn} class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded font-bold text-xl" title="Zoom In">+</button>
+			<div class="flex items-center gap-3">
+				<div class="flex items-center bg-white/10 rounded-lg">
+					<button on:click={zoomOut} class="w-10 h-9 flex items-center justify-center hover:bg-white/20 rounded-l-lg font-bold text-xl active:bg-white/30" title="Zoom Out">−</button>
+					<span class="w-12 text-center font-mono text-sm border-x border-white/10">{Math.round(zoomLevel * 100)}%</span>
+					<button on:click={zoomIn} class="w-10 h-9 flex items-center justify-center hover:bg-white/20 rounded-r-lg font-bold text-xl active:bg-white/30" title="Zoom In">+</button>
 				</div>
-				<button on:click={closeImage} class="bg-[#A27B5C] hover:bg-white hover:text-black transition px-4 py-1.5 rounded-lg font-bold">
+				<button on:click={closeImage} class="bg-[#A27B5C] hover:bg-[#8f6a50] text-white px-4 py-2 rounded-lg font-bold text-sm">
 					Close
 				</button>
 			</div>
 		</div>
 
-		<div class="flex-1 overflow-auto flex items-center justify-center p-4 cursor-move">
+		<div class="flex-1 overflow-auto bg-black relative w-full h-full flex p-4">
 			<img 
 				src={viewingImage} 
-				alt="Zoomed Reference Image" 
-				style="transform: scale({zoomLevel}); transform-origin: center top; transition: transform 0.2s ease-out;"
-				class="max-w-none shadow-2xl rounded-sm"
+				alt="Zoomed Reference" 
+				class="shadow-2xl rounded-sm transition-all duration-200 ease-out m-auto block"
+				style="width: {zoomLevel * 100}%; max-width: none; flex-shrink: 0;" 
 				on:click={(e) => e.stopPropagation()}
 			/>
 		</div>

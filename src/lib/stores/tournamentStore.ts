@@ -33,7 +33,7 @@ export interface Tournament {
     roundRobin: boolean;
     groupCount: number;
     teams: Team[];
-    matches: Match[]; // New field
+    matches: Match[];
     createdAt: string;
     scoring: {
         killPoints: number;
@@ -42,6 +42,7 @@ export interface Tournament {
 }
 
 const LOCAL_KEY = "tournaments_v1";
+const DEFAULTS_KEY = "scoring_defaults"; // New key for saving defaults
 
 function safeParse<T>(v: string | null, fallback: T): T {
     if (!v) return fallback;
@@ -79,10 +80,32 @@ function createTournamentStore() {
     return {
         subscribe,
         
+        // 1. Modified addTournament to load defaults
         addTournament(payload: { name: string; roundRobin: boolean; groupCount: number }): string {
             const id = typeof crypto !== "undefined" && (crypto as any).randomUUID
                 ? (crypto as any).randomUUID()
                 : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+            // Default hardcoded scoring
+            let initialScoring = {
+                killPoints: 1,
+                positions: Array.from({ length: 20 }, (_, i) => ({
+                    place: i + 1,
+                    points: 0 
+                }))
+            };
+
+            // Try to load saved defaults from localStorage
+            if (browser) {
+                const savedDefaults = localStorage.getItem(DEFAULTS_KEY);
+                if (savedDefaults) {
+                    try {
+                        initialScoring = JSON.parse(savedDefaults);
+                    } catch (e) {
+                        console.error("Failed to parse scoring defaults", e);
+                    }
+                }
+            }
 
             const t: Tournament = {
                 id,
@@ -92,17 +115,22 @@ function createTournamentStore() {
                 teams: [],
                 matches: [],
                 createdAt: new Date().toISOString(),
-                scoring: {
-                    killPoints: 1,
-                    positions: Array.from({ length: 20 }, (_, i) => ({
-                        place: i + 1,
-                        points: 0 
-                    }))
-                }
+                scoring: initialScoring // Use the loaded or default scoring
             };
 
             update((list) => [t, ...list]);
             return id;
+        },
+
+        // 2. New function to save current scoring as default
+        saveDefaultScoring(scoring: { killPoints: number; positions: { place: number; points: number }[] }) {
+            if (browser) {
+                try {
+                    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(scoring));
+                } catch (e) {
+                    console.error("Failed to save scoring defaults", e);
+                }
+            }
         },
 
         addTeam(
@@ -200,7 +228,6 @@ function createTournamentStore() {
             });
         },
 
-        // Update positions or kill points if needed
         updateKillPoints(id: string, value: number) {
             update(list => list.map(t => t.id === id ? { ...t, scoring: { ...t.scoring, killPoints: value } } : t));
         },

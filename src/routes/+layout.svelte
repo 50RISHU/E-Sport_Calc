@@ -92,28 +92,28 @@
 		<ul class="flex flex-col space-y-4 px-6 font-semibold text-[#DCD7C9]">
 			<li>
 				<a
-					href="/"
+					href="/dashboard"
 					class="text-light navlinks"
-					>Home</a
+					>Dashboard</a
 				>
 			</li>
 			<li>
 				<a
-					href="/"
+					href="/dashboard"
 					class="text-light navlinks"
 					>About</a
 				>
 			</li>
 			<li>
 				<a
-					href="/"
+					href="/dashboard"
 					class="text-light navlinks"
 					>Pricing</a
 				>
 			</li>
 			<li>
 				<a
-					href="/"
+					href="/dashboard"
 					class="text-light navlinks"
 					>Contact</a
 				>
