@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation'; // Import goto
 	import { tournamentStore, type Tournament, type MatchResult } from '$lib/stores/tournamentStore';
 	import { onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
@@ -17,7 +18,7 @@
 
 	// Image Viewer State
 	let viewingImage: string | null = null;
-	let zoomLevel = 1; // 1 = 100% width, 2 = 200% width, etc.
+	let zoomLevel = 1;
 
 	// Display Interface
 	interface DisplayEntry extends MatchResult {
@@ -43,7 +44,6 @@
 
 	// --- HELPERS ---
 
-	// Load data for specific match ID
 	function loadMatchData(matchId: number) {
 		currentEntries = [];
 		if (!tournament) return;
@@ -63,19 +63,16 @@
 		}
 	}
 
-	// Reactively load when match ID changes
 	$: if (tournament && currentMatchId) {
 		loadMatchData(currentMatchId);
 	}
 
-	// Filter teams for dropdown
 	$: filteredTeams = tournament?.teams.filter((t) => {
 		const matchName = t.name.toLowerCase().includes(searchQuery.toLowerCase());
 		const alreadyEntered = currentEntries.some(e => e.teamId === t.id);
 		return matchName && !alreadyEntered;
 	}) ?? [];
 
-	// Calculation Logic
 	function calculatePoints(kills: number, pos: number) {
 		if (!tournament) return { k: 0, p: 0, t: 0 };
 		const kPoints = kills * tournament.scoring.killPoints;
@@ -84,7 +81,6 @@
 		return { k: kPoints, p: pPoints, t: kPoints + pPoints };
 	}
 
-	// Add / Update Local List
 	function handleAddOrUpdate() {
 		if (!tournament || !selectedTeamId || inputPosition === null || inputKills === null) {
 			alert("Please select a team and enter Kills/Position");
@@ -109,7 +105,6 @@
 
 		currentEntries = [newEntry, ...currentEntries];
 
-		// Reset inputs
 		selectedTeamId = '';
 		searchQuery = '';
 		inputKills = null;
@@ -152,7 +147,6 @@
 		}
 	}
 
-	// --- IMAGE VIEWER LOGIC ---
 	function openImage(src: string) {
 		viewingImage = src;
 		zoomLevel = 1;
@@ -164,11 +158,11 @@
 	}
 
 	function zoomIn() {
-		if (zoomLevel < 3) zoomLevel += 0.5; // Cap at 3x
+		if (zoomLevel < 3) zoomLevel += 0.5;
 	}
 
 	function zoomOut() {
-		if (zoomLevel > 1) zoomLevel -= 0.5; // Cap at 1x
+		if (zoomLevel > 1) zoomLevel -= 0.5;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -289,7 +283,16 @@
 			<div class="bg-white rounded-xl shadow border border-[#A27B5C]/20 overflow-hidden">
 				<div class="p-4 bg-[#F6E6C9]/50 border-b border-[#A27B5C]/20 flex justify-between items-center">
 					<h3 class="font-bold text-[#3D2C2E]">Entered Data <span class="text-sm font-normal opacity-70">(Match {currentMatchId})</span></h3>
-					<span class="text-sm font-bold bg-white px-2 py-1 rounded border text-[#A27B5C]">{currentEntries.length} Teams</span>
+					
+					<div class="flex items-center gap-3">
+						<button 
+							on:click={() => goto(`/tournament/${tournament?.id}/table`)}
+							class="text-xs font-bold text-white bg-[#3D2C2E] px-3 py-1.5 rounded-lg hover:bg-[#5E4246] transition"
+						>
+							VIEW TABLE
+						</button>
+						<span class="text-sm font-bold bg-white px-2 py-1 rounded border text-[#A27B5C]">{currentEntries.length} Teams</span>
+					</div>
 				</div>
 
 				{#if currentEntries.length === 0}
