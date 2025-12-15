@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation'; // Import goto
+	import { goto } from '$app/navigation'; 
 	import { tournamentStore, type Tournament, type MatchResult } from '$lib/stores/tournamentStore';
 	import { onDestroy } from 'svelte';
-	import { fade } from 'svelte/transition';
+	import { fade, fly, slide } from 'svelte/transition';
 
 	// --- STATE ---
 	let tournament: Tournament | null = null;
@@ -172,170 +172,220 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="min-h-screen bg-[#DCD7C9] p-4 pb-24">
-	{#if tournament}
-		<div class="max-w-3xl mx-auto space-y-6">
+<div class="fixed inset-0 bg-[#0a0a0c] -z-50"></div>
+<div class="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] -z-40 pointer-events-none"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-900/20 rounded-full blur-[120px] -z-40 pointer-events-none"></div>
+<div class="fixed inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] -z-30 pointer-events-none"></div>
 
-			<div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-[#A27B5C]/30">
-				<h1 class="text-2xl font-bold text-[#3D2C2E]">Calculate Points</h1>
+<div class="min-h-screen text-slate-200 p-4 md:p-6 pb-24 font-['Inter'] relative selection:bg-cyan-500 selection:text-black">
+	{#if tournament}
+		<div class="max-w-4xl mx-auto space-y-6">
+
+			<div 
+				class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-2xl relative overflow-hidden"
+				in:fly={{ y: -20, duration: 400 }}
+			>
+				<div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-purple-500"></div>
+
+				<h1 class="text-3xl font-black text-white font-['Rajdhani'] uppercase tracking-wide">
+					Data <span class="text-cyan-500">Entry</span>
+				</h1>
 				
-				<div class="flex items-center gap-4 bg-gray-50 p-2 rounded-lg border">
-					<label class="font-bold text-sm text-[#3D2C2E]">Match No.</label>
-					<div class="flex items-center gap-1">
-						<button class="w-8 h-8 rounded bg-white border hover:bg-gray-100 font-bold shadow-sm" 
-							on:click={() => currentMatchId = Math.max(1, currentMatchId - 1)}>-</button>
-						<input 
-							type="number" 
-							bind:value={currentMatchId} 
-							class="w-12 h-8 text-center border rounded font-bold bg-white"
-							min="1"
-						/>
-						<button class="w-8 h-8 rounded bg-white border hover:bg-gray-100 font-bold shadow-sm" 
-							on:click={() => currentMatchId++}>+</button>
+				<div class="flex items-center gap-4 bg-black/40 p-2 pr-4 rounded-lg border border-white/5">
+					<div class="px-3 py-1 bg-white/5 rounded text-[10px] font-bold text-gray-400 uppercase tracking-widest border border-white/5">Match ID</div>
+					<div class="flex items-center gap-3">
+						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" 
+							on:click={() => currentMatchId = Math.max(1, currentMatchId - 1)}
+						>
+							<i class="bi bi-dash-lg"></i>
+						</button>
+						<span class="text-2xl font-bold font-['Rajdhani'] text-white min-w-[30px] text-center">{currentMatchId}</span>
+						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" 
+							on:click={() => currentMatchId++}
+						>
+							<i class="bi bi-plus-lg"></i>
+						</button>
 					</div>
 				</div>
 				
 				<button 
 					on:click={saveMatch}
-					class="px-6 py-2 bg-[#A27B5C] text-white font-bold rounded-lg shadow-md hover:bg-[#8f6a50] transition transform active:scale-95"
+					class="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold font-['Rajdhani'] tracking-widest uppercase rounded shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all hover:scale-105 active:scale-95"
 				>
-					SAVE MATCH
+					Save Data
 				</button>
 			</div>
 
-			<div class="bg-white p-4 rounded-xl shadow-sm border border-[#A27B5C]/30">
-				<label class="block text-sm font-bold text-[#3D2C2E] mb-2">
-					<i class="bi bi-image"></i> Upload Reference (Screenshot)
-				</label>
-				<input
-					type="file" multiple accept="image/*"
-					on:change={handleImageUpload}
-					class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#F6E6C9] file:text-[#A27B5C] hover:file:bg-[#eadbc0]"
-				/>
-				{#if uploadedImages.length > 0}
-					<p class="text-xs text-gray-400 mt-2 italic">Click an image to view full screen</p>
-					<div class="flex gap-2 overflow-x-auto mt-2 pb-2">
-						{#each uploadedImages as img}
-							<button 
-								class="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-[#A27B5C] rounded-lg"
-								on:click={() => openImage(img)}
-							>
-								<img src={img} alt="ref" class="h-24 w-auto rounded-lg border shadow-sm object-cover hover:opacity-80 transition" />
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
-
-			<div class="bg-white p-6 rounded-xl shadow-lg border border-[#A27B5C]/30 relative z-10">
-				<div class="flex justify-between items-end mb-4">
-					<h3 class="text-lg font-bold text-[#3D2C2E]">Add Result</h3>
-					<span class="text-xs text-gray-400 font-medium">Match {currentMatchId}</span>
-				</div>
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				
-				<div class="mb-4 relative">
-					<label class="text-sm font-semibold text-gray-600 block mb-1">Select Team</label>
-					<input
-						type="text"
-						bind:value={searchQuery}
-						placeholder="Search team name..."
-						class="w-full p-3 rounded-lg border focus:ring-2 focus:ring-[#A27B5C] outline-none"
-						on:input={() => selectedTeamId = ''} 
-					/>
-					{#if searchQuery && !selectedTeamId}
-						<div class="absolute z-50 left-0 right-0 mt-1 bg-white border rounded-lg shadow-xl max-h-60 overflow-y-auto">
-							{#if filteredTeams.length > 0}
-								{#each filteredTeams as t}
-									<button
-										class="w-full text-left px-4 py-3 hover:bg-[#F6E6C9] border-b last:border-0 flex justify-between items-center transition-colors"
-										on:click={() => { selectedTeamId = t.id; searchQuery = t.name; }}
-									>
-										<span class="font-medium text-[#3D2C2E]">{t.name}</span>
-										{#if t.group}<span class="text-[10px] bg-[#A27B5C] text-white px-2 py-0.5 rounded-full">Group {t.group}</span>{/if}
-									</button>
-								{/each}
-							{:else}
-								<div class="p-3 text-sm text-gray-500 text-center">No teams found or already added.</div>
-							{/if}
+				<div 
+					class="lg:col-span-1 bg-[#0E0E10] p-5 rounded-xl border border-white/5 shadow-lg flex flex-col gap-4"
+					in:fade={{ duration: 400, delay: 100 }}
+				>
+					<label class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+						<i class="bi bi-images text-cyan-500"></i> Evidence / Screenshots
+					</label>
+					
+					<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-cyan-500/50 hover:bg-white/[0.02] transition-all group">
+						<div class="flex flex-col items-center justify-center pt-5 pb-6">
+							<i class="bi bi-cloud-upload text-2xl text-gray-600 group-hover:text-cyan-400 mb-2 transition-colors"></i>
+							<p class="text-xs text-gray-500 group-hover:text-gray-300">Click to upload</p>
+						</div>
+						<input type="file" multiple accept="image/*" on:change={handleImageUpload} class="hidden" />
+					</label>
+
+					{#if uploadedImages.length > 0}
+						<div class="grid grid-cols-3 gap-2 overflow-y-auto max-h-40 custom-scrollbar pr-1">
+							{#each uploadedImages as img}
+								<button 
+									class="aspect-video relative rounded overflow-hidden border border-white/10 group focus:outline-none focus:ring-2 focus:ring-cyan-500"
+									on:click={() => openImage(img)}
+								>
+									<img src={img} alt="ref" class="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+									<div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+										<i class="bi bi-zoom-in text-white"></i>
+									</div>
+								</button>
+							{/each}
 						</div>
 					{/if}
 				</div>
 
-				<div class="flex gap-4 mb-4">
-					<div class="flex-1">
-						<label class="text-sm font-semibold text-gray-600 block mb-1">Kills</label>
-						<input type="number" bind:value={inputKills} class="w-full p-3 border rounded-lg text-center font-bold text-xl bg-gray-50 focus:ring-2 focus:ring-[#A27B5C] outline-none" placeholder="0" />
-					</div>
-					<div class="flex-1">
-						<label class="text-sm font-semibold text-gray-600 block mb-1">Position (#)</label>
-						<input type="number" bind:value={inputPosition} class="w-full p-3 border rounded-lg text-center font-bold text-xl bg-gray-50 focus:ring-2 focus:ring-[#A27B5C] outline-none" placeholder="#" />
-					</div>
-				</div>
-
-				<button 
-					on:click={handleAddOrUpdate} 
-					class="w-full py-3 bg-[#3D2C2E] text-white font-bold rounded-lg shadow-md hover:bg-[#523b3e] transition active:scale-95 flex justify-center gap-2"
+				<div 
+					class="lg:col-span-2 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden"
+					in:fade={{ duration: 400, delay: 200 }}
 				>
-					ADD ENTRY <span class="text-[#A27B5C]">➔</span>
-				</button>
+					<div class="absolute -top-20 -right-20 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+					<div class="flex justify-between items-end mb-6 relative z-10">
+						<div>
+							<h3 class="text-xl font-bold text-white font-['Rajdhani'] uppercase tracking-wider">Input Result</h3>
+							<p class="text-[10px] text-gray-500 font-mono mt-1">TARGET: MATCH {currentMatchId}</p>
+						</div>
+					</div>
+					
+					<div class="mb-5 relative z-20">
+						<label class="text-xs font-bold text-cyan-600 uppercase tracking-widest mb-2 block">Select Unit</label>
+						<div class="relative">
+							<input
+								type="text"
+								bind:value={searchQuery}
+								placeholder="SEARCH TEAM NAME..."
+								class="w-full p-4 pl-12 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-mono text-sm uppercase"
+								on:input={() => selectedTeamId = ''} 
+							/>
+							<i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-600"></i>
+							
+							{#if searchQuery && !selectedTeamId}
+								<div class="absolute w-full mt-2 bg-[#151518] border border-white/10 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50 custom-scrollbar">
+									{#if filteredTeams.length > 0}
+										{#each filteredTeams as t}
+											<button
+												class="w-full text-left px-4 py-3 hover:bg-cyan-900/20 border-b border-white/5 last:border-0 flex justify-between items-center group transition-colors"
+												on:click={() => { selectedTeamId = t.id; searchQuery = t.name; }}
+											>
+												<span class="font-bold text-gray-300 group-hover:text-white font-mono">{t.name}</span>
+												{#if t.group}<span class="text-[10px] bg-black/40 text-cyan-600 px-2 py-0.5 rounded border border-white/5">GRP {t.group}</span>{/if}
+											</button>
+										{/each}
+									{:else}
+										<div class="p-3 text-xs text-gray-500 text-center font-mono">NO UNITS FOUND</div>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					<div class="grid grid-cols-2 gap-4 mb-6">
+						<div>
+							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Kill Count</label>
+							<input type="number" bind:value={inputKills} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all placeholder-gray-800" placeholder="0" />
+						</div>
+						<div>
+							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Rank #</label>
+							<input type="number" bind:value={inputPosition} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all placeholder-gray-800" placeholder="#" />
+						</div>
+					</div>
+
+					<button 
+						on:click={handleAddOrUpdate} 
+						class="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-cyan-900 hover:to-cyan-800 text-white font-bold font-['Rajdhani'] text-lg tracking-[0.15em] rounded-lg shadow-lg border border-white/5 hover:border-cyan-500/50 transition-all active:scale-[0.98] group"
+					>
+						CONFIRM ENTRY <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform inline-block"></i>
+					</button>
+				</div>
 			</div>
 
-			<div class="bg-white rounded-xl shadow border border-[#A27B5C]/20 overflow-hidden">
-				<div class="p-4 bg-[#F6E6C9]/50 border-b border-[#A27B5C]/20 flex justify-between items-center">
-					<h3 class="font-bold text-[#3D2C2E]">Entered Data <span class="text-sm font-normal opacity-70">(Match {currentMatchId})</span></h3>
+			<div 
+				class="bg-[#0E0E10] rounded-xl border border-white/5 shadow-2xl overflow-hidden"
+				in:slide={{ duration: 400, delay: 300 }}
+			>
+				<div class="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
+					<div class="flex items-center gap-3">
+						<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+						<h3 class="font-bold text-white font-['Rajdhani'] uppercase tracking-wider">Live Feed <span class="text-gray-600 ml-2">// MATCH {currentMatchId}</span></h3>
+					</div>
 					
 					<div class="flex items-center gap-3">
+						<span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest hidden sm:inline-block">Entries: <span class="text-white">{currentEntries.length}</span></span>
 						<button 
 							on:click={() => goto(`/tournament/${tournament?.id}/table`)}
-							class="text-xs font-bold text-white bg-[#3D2C2E] px-3 py-1.5 rounded-lg hover:bg-[#5E4246] transition"
+							class="text-[10px] font-bold text-black bg-cyan-500 hover:bg-cyan-400 px-3 py-1.5 rounded uppercase tracking-wider transition-colors"
 						>
-							VIEW TABLE
+							Leaderboard
 						</button>
-						<span class="text-sm font-bold bg-white px-2 py-1 rounded border text-[#A27B5C]">{currentEntries.length} Teams</span>
 					</div>
 				</div>
 
-				{#if currentEntries.length === 0}
-					<div class="p-10 text-center text-gray-400 italic bg-gray-50">
-						No data entered for Match {currentMatchId} yet.
-					</div>
-				{:else}
-					<div class="divide-y divide-gray-100">
+				<div class="divide-y divide-white/5">
+					{#if currentEntries.length === 0}
+						<div class="p-12 text-center">
+							<i class="bi bi-database-x text-4xl text-gray-800 mb-3 block"></i>
+							<p class="text-gray-600 font-mono text-sm uppercase tracking-widest">No data captured</p>
+						</div>
+					{:else}
 						{#each currentEntries as entry (entry.teamId)}
-							<div class="p-4 flex items-center justify-between hover:bg-[#FAF9F6] transition" transition:fade|local>
-								<div>
-									<div class="font-bold text-[#3D2C2E] text-lg flex items-center gap-2">
-										{entry.teamName}
-										{#if entry.teamGroup}
-											<span class="text-[10px] bg-[#A27B5C] text-white px-1.5 py-0.5 rounded">Grp {entry.teamGroup}</span>
-										{/if}
+							<div class="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group" transition:slide|local>
+								
+								<div class="flex items-center gap-4">
+									<div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center font-['Rajdhani'] font-bold text-gray-500 border border-white/5">
+										#{entry.position}
 									</div>
-									<div class="text-xs text-gray-500 flex gap-2 mt-1">
-										<span class="bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-100">#{entry.position} Place</span>
-										<span class="bg-red-50 text-red-800 px-2 py-0.5 rounded border border-red-100">{entry.kills} Kills</span>
+									<div>
+										<div class="font-bold text-gray-200 text-lg leading-none font-['Rajdhani'] flex items-center gap-2">
+											{entry.teamName}
+											{#if entry.teamGroup}
+												<span class="text-[9px] bg-white/5 text-gray-500 px-1.5 py-0.5 rounded border border-white/5 font-mono">GRP {entry.teamGroup}</span>
+											{/if}
+										</div>
+										<div class="text-[10px] text-gray-500 uppercase tracking-wider mt-1 font-bold">
+											<span class="text-red-400">{entry.kills} KILLS</span>
+										</div>
 									</div>
 								</div>
 								
-								<div class="flex items-center gap-5">
+								<div class="flex items-center gap-6">
 									<div class="text-right">
-										<div class="text-xl font-black text-[#A27B5C]">{entry.totalPoints}</div>
-										<div class="text-[10px] font-bold text-gray-300 tracking-wider">PTS</div>
+										<div class="text-2xl font-black text-cyan-500 font-['Rajdhani'] leading-none">{entry.totalPoints}</div>
+										<div class="text-[9px] font-bold text-gray-600 uppercase tracking-widest">PTS</div>
 									</div>
-									<div class="flex flex-col gap-1 pl-3 border-l">
-										<button on:click={() => editEntry(entry)} class="text-blue-600 text-xs hover:underline font-semibold">EDIT</button>
-										<button on:click={() => removeEntry(entry.teamId)} class="text-red-500 text-xs hover:underline font-semibold">REMOVE</button>
+									
+									<div class="flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border-l border-white/10 pl-3">
+										<button on:click={() => editEntry(entry)} class="text-[10px] text-cyan-600 hover:text-cyan-400 font-bold uppercase tracking-wider text-left">EDIT</button>
+										<button on:click={() => removeEntry(entry.teamId)} class="text-[10px] text-red-900 hover:text-red-500 font-bold uppercase tracking-wider text-left">DEL</button>
 									</div>
 								</div>
 							</div>
 						{/each}
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
 
 		</div>
 	{:else}
-		<div class="flex items-center justify-center h-[80vh] text-gray-500 font-medium animate-pulse">
-			Loading tournament data...
+		<div class="flex flex-col items-center justify-center h-[80vh] gap-4">
+			<div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+			<p class="text-cyan-500 font-mono text-sm animate-pulse tracking-widest">LOADING DATA STREAM...</p>
 		</div>
 	{/if}
 </div>
@@ -345,28 +395,45 @@
 		class="fixed inset-0 z-50 bg-black/95 flex flex-col"
 		transition:fade={{ duration: 150 }}
 	>
-		<div class="flex justify-between items-center p-4 bg-black/50 backdrop-blur-sm z-20 shadow-sm text-white border-b border-white/10">
-			<h2 class="font-bold text-lg">Reference View</h2>
+		<div class="flex justify-between items-center p-4 bg-black/80 backdrop-blur-sm z-20 shadow-xl border-b border-white/10">
+			<h2 class="font-bold text-lg font-['Rajdhani'] text-white uppercase tracking-widest flex items-center gap-2">
+				<i class="bi bi-eye text-cyan-500"></i> Visual Intel
+			</h2>
 			<div class="flex items-center gap-3">
-				<div class="flex items-center bg-white/10 rounded-lg">
-					<button on:click={zoomOut} class="w-10 h-9 flex items-center justify-center hover:bg-white/20 rounded-l-lg font-bold text-xl active:bg-white/30" title="Zoom Out">−</button>
-					<span class="w-12 text-center font-mono text-sm border-x border-white/10">{Math.round(zoomLevel * 100)}%</span>
-					<button on:click={zoomIn} class="w-10 h-9 flex items-center justify-center hover:bg-white/20 rounded-r-lg font-bold text-xl active:bg-white/30" title="Zoom In">+</button>
+				<div class="flex items-center bg-white/5 rounded-lg border border-white/10">
+					<button on:click={zoomOut} class="w-10 h-9 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition" title="Zoom Out"><i class="bi bi-dash"></i></button>
+					<span class="w-12 text-center font-mono text-xs text-cyan-500 border-x border-white/10">{Math.round(zoomLevel * 100)}%</span>
+					<button on:click={zoomIn} class="w-10 h-9 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition" title="Zoom In"><i class="bi bi-plus"></i></button>
 				</div>
-				<button on:click={closeImage} class="bg-[#A27B5C] hover:bg-[#8f6a50] text-white px-4 py-2 rounded-lg font-bold text-sm">
+				<button on:click={closeImage} class="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/30 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all">
 					Close
 				</button>
 			</div>
 		</div>
 
-		<div class="flex-1 overflow-auto bg-black relative w-full h-full flex p-4">
+		<div class="flex-1 overflow-auto bg-[#050505] relative w-full h-full flex p-4 cursor-grab active:cursor-grabbing">
+			<div class="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
+			
 			<img 
 				src={viewingImage} 
 				alt="Zoomed Reference" 
-				class="shadow-2xl rounded-sm transition-all duration-200 ease-out m-auto block"
+				class="shadow-2xl rounded transition-all duration-200 ease-out m-auto block relative z-10"
 				style="width: {zoomLevel * 100}%; max-width: none; flex-shrink: 0;" 
 				on:click={(e) => e.stopPropagation()}
 			/>
 		</div>
 	</div>
 {/if}
+
+<style>
+	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+	.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+	.bg-grid-pattern {
+		background-size: 40px 40px;
+		background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+						  linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+	}
+</style>	
