@@ -162,7 +162,6 @@
 
 						<div 
 							class="grid grid-cols-12 items-center py-4 px-2 md:px-6 text-sm hover:bg-white/[0.02] transition-colors relative group {rowGlow}"
-							in:slide|local
 						>
 							<div class="col-span-1 flex justify-center">
 								<span class="{rankColor} w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded border font-bold font-['Rajdhani'] text-xs md:text-sm shadow-sm transition-all group-hover:scale-110">

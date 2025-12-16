@@ -16,3 +16,9 @@ h1, h2, h3, h4, .gamer-font {
     font-family: 'Rajdhani', sans-serif;
     text-transform: uppercase;
 }
+
+.gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+}
