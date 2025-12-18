@@ -4,6 +4,10 @@
 	import { tournamentStore, type Tournament, type MatchResult } from '$lib/stores/tournamentStore';
 	import { onDestroy } from 'svelte';
 	import { fade, fly, slide } from 'svelte/transition';
+	import { onMount } from 'svelte';
+	import { supabase } from '$lib/supabaseClient';
+	import type { Session } from '@supabase/supabase-js';
+
 
 	// --- STATE ---
 	let tournament: Tournament | null = null;
@@ -19,6 +23,22 @@
 	// Image Viewer State
 	let viewingImage: string | null = null;
 	let zoomLevel = 1;
+
+	let session: Session | null = null;
+	let loading = true;
+
+	onMount(async () => {
+		// 1. Check Session
+		const {data, error} = await supabase.auth.getSession();
+
+		if(error || !data.session) {
+			goto('/login');
+			return;
+		}
+
+		session = data.session;
+		loading = false;
+	})
 
 	// Display Interface
 	interface DisplayEntry extends MatchResult {

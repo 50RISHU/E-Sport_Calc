@@ -34,7 +34,7 @@
 				<img src={logo} alt="Logo" class="w-12 h-12 object-contain relative z-10" />
 			</div>
 			<div class="flex flex-col">
-				<span class="font-black text-2xl tracking-widest font-['Rajdhani'] uppercase leading-none">Cyber<span class="text-cyan-500">Calc</span></span>
+				<span class="font-black text-2xl tracking-widest font-['Rajdhani'] uppercase leading-none">Esport<span class="text-cyan-500">Calc</span></span>
 				<span class="text-[9px] text-gray-500 font-mono tracking-[0.2em] uppercase">Tactical Systems</span>
 			</div>
 		</div>

@@ -3,10 +3,26 @@
 	import { tournamentStore, type Tournament } from "$lib/stores/tournamentStore";
 	import { onMount, onDestroy } from "svelte";
 	import { fade, fly, slide } from "svelte/transition";
+	import { supabase } from "$lib/supabaseClient";
+	import type { Session } from "@supabase/supabase-js";
 
 	let tournamentName = "";
 	let roundRobin = false;
 	let groupCount = 2;
+	let session: Session | null = null;
+	let loading = true;
+
+	onMount(async () =>{
+		const { data, error } = await supabase.auth.getSession();
+
+		if(error || !data.session) {
+			goto('/login');
+			return;
+		}
+
+		session = data.session;
+		loading = false;
+	})
 
 	// preview (optional)
 	let tournaments: Tournament[] = [];

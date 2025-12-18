@@ -4,12 +4,29 @@
 	import { onMount } from 'svelte';
 	import { tournamentStore, type Tournament } from '$lib/stores/tournamentStore';
 	import { fade, fly } from 'svelte/transition';
+	import { supabase } from '$lib/supabaseClient';
+	import type { Session } from '@supabase/supabase-js';
+
 
 	let tournamentId = "";
 	let tournament: Tournament | null = null;
 	let saveMessage = ""; 
+	let session: Session | null = null;
+	let loading = true;
 
 	$: tournamentId = $page.params.id;
+
+	onMount(async () => {
+		const {data, error} = await supabase.auth.getSession();
+
+		if(error || !data.session) {
+			goto('/login');
+			return;
+		}
+
+		session = data.session;
+		loading = false;
+	});
 
 	const unsubscribe = tournamentStore.subscribe((list) => {
 		if (tournamentId) {

@@ -1,16 +1,48 @@
 <script lang="ts">
-    import LeftSideCard from '$lib/components/loginAndSignupLeftCard.svelte'
+    import LeftSideCard from '$lib/components/loginAndSignupLeftCard.svelte';
+    import { supabase } from '$lib/supabaseClient';
     import { goto } from '$app/navigation';
-    
+
     let email = '';
     let password = '';
     let phone = '';
+    let name = '';
+    let loading = false;
 
-    const handleSignup = (e: Event) => {
+    const handleSignup = async (e: Event) => {
         e.preventDefault();
-        console.log('Signup:', email, phone, password);
-        // Simulate successful registration
-        goto('/dashboard');
+        loading = true;
+
+        const {data: existingUser} = await supabase.from('profiles').select('email').eq('email', email);
+        if (existingUser && existingUser.length > 0) {
+            alert("Email already registered.");
+            loading = false;
+            return;
+        }
+
+        // 1. Sign up (The SQL Trigger handles the profile creation now)
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                // IMPORTANT: We pass the extra data here so the SQL trigger can find it
+                data: { 
+                    phone: phone,
+                    full_name: name 
+                }
+            }
+        });
+
+        loading = false;
+
+        if (error) {
+            // This will catch "Email already registered" OR "Phone already registered" (due to unique constraint)
+            alert("Registration Failed: " + error.message);
+        } else {
+            // Success
+            alert("Registration Successful! Please check your email to confirm your account.");
+            goto('/login');
+        }
     };
 </script>
 
@@ -68,6 +100,23 @@
                 </div>
 
                 <div class="space-y-2 group">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-widest font-mono group-focus-within:text-green-500 transition-colors" for="name">
+                        Operator Name
+                    </label>
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="name"
+                            bind:value={name}
+                            class="w-full p-4 pl-12 rounded-lg bg-[#151518] border border-white/10 text-white placeholder-gray-700 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all font-mono text-sm"
+                            placeholder="Dragon Ball"
+                            required
+                        />
+                        <i class="bi bi-person-check absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-green-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <div class="space-y-2 group">
                     <label class="text-xs font-bold text-gray-500 uppercase tracking-widest font-mono group-focus-within:text-red-500 transition-colors" for="password">
                         Security Clearance (Password)
                     </label>
@@ -85,9 +134,10 @@
                 </div>
 
                 <button
-                    class="w-full py-4 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-black font-['Rajdhani'] text-lg tracking-[0.2em] uppercase shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-6"
+                    disabled={loading}
+                    class="w-full py-4 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-black font-['Rajdhani'] text-lg tracking-[0.2em] uppercase shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Establish Uplink
+                    {loading ? 'Processing...' : 'Establish Uplink'}
                 </button>
 
                 <div class="text-center pt-4 border-t border-white/5 mt-6">

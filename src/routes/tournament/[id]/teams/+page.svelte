@@ -5,10 +5,29 @@
 	import TeamCard from "$lib/components/TeamCard.svelte";
 	import { derived } from "svelte/store";
 	import { fade, fly, slide } from "svelte/transition";
+	import { goto } from "$app/navigation";
+	import { onMount } from "svelte";
+	import { supabase } from "$lib/supabaseClient";
+	import type { Session } from "@supabase/supabase-js";
+
 
 	let id = "";
 	let tournament: Tournament | null = null;
+	let session: Session | null = null;
+	let loading = true;
 
+	onMount(async () => {
+		const {data, error} = await supabase.auth.getSession();
+
+		if(error || !data.session) {
+			goto('/login');
+			return;
+		}
+
+		session = data.session;
+		loading = false;
+	});
+	
 	let tab: "add" | "entered" = "add";
 	let teamName = "";
 	let teamTag = "";

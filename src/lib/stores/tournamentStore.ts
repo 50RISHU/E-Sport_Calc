@@ -1,242 +1,243 @@
 // src/lib/stores/tournamentStore.ts
 import { writable } from "svelte/store";
-import { browser } from "$app/environment";
+import { supabase } from "$lib/supabaseClient";
 
+// --- INTERFACES ---
 export interface Team {
     id: string;
     name: string;
-    tag: string;
-    logo: string | null;
-    number: number;
-    group: string | null;
+    tag?: string;
+    logo?: string | null;
+    group?: string | null;
     players: string[];
 }
 
 export interface MatchResult {
     teamId: string;
     kills: number;
-    position: number;
+    place: number;
     killPoints: number;
     placePoints: number;
     totalPoints: number;
 }
 
 export interface Match {
-    id: number;
-    name: string;
+    matchId: number; // The visual ID (Match 1, Match 2)
     results: MatchResult[];
 }
 
 export interface Tournament {
     id: string;
     name: string;
+    createdDate: Date;
     roundRobin: boolean;
     groupCount: number;
-    teams: Team[];
-    matches: Match[];
-    createdAt: string;
     scoring: {
         killPoints: number;
         positions: { place: number; points: number }[];
-    }
+    };
+    teams: Team[];
+    matches: Match[];
 }
 
-const LOCAL_KEY = "tournaments_v1";
-const DEFAULTS_KEY = "scoring_defaults"; // New key for saving defaults
-
-function safeParse<T>(v: string | null, fallback: T): T {
-    if (!v) return fallback;
-    try {
-        return JSON.parse(v) as T;
-    } catch {
-        return fallback;
-    }
-}
-
+// --- STORE LOGIC ---
 function createTournamentStore() {
-    // Load initial data
-    let initialData = browser
-        ? safeParse<Tournament[]>(localStorage.getItem(LOCAL_KEY), [])
-        : [];
-
-    // DATA MIGRATION FIX: Ensure all loaded tournaments have a 'matches' array
-    initialData = initialData.map(t => ({
-        ...t,
-        matches: t.matches || [] // Default to empty array if missing
-    }));
-
-    const { subscribe, set, update } = writable<Tournament[]>(initialData);
-
-    subscribe((value) => {
-        if (browser) {
-            try {
-                localStorage.setItem(LOCAL_KEY, JSON.stringify(value));
-            } catch {
-                // ignore
-            }
-        }
-    });
+    const { subscribe, set, update } = writable<Tournament[]>([]);
 
     return {
         subscribe,
-        
-        // 1. Modified addTournament to load defaults
-        addTournament(payload: { name: string; roundRobin: boolean; groupCount: number }): string {
-            const id = typeof crypto !== "undefined" && (crypto as any).randomUUID
-                ? (crypto as any).randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-            // Default hardcoded scoring
-            let initialScoring = {
-                killPoints: 1,
-                positions: Array.from({ length: 20 }, (_, i) => ({
-                    place: i + 1,
-                    points: 0 
+        // 1. FETCH DATA FROM SUPABASE
+        async loadTournaments() {
+            const { data: tournaments, error } = await supabase
+                .from('tournaments')
+                .select(`
+                    *,
+                    teams (*),
+                    matches (*)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Error loading tournaments:", error);
+                return;
+            }
+
+            // Transform DB data to match our TypeScript Interfaces
+            const formattedData: Tournament[] = tournaments.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                createdDate: new Date(t.created_at),
+                roundRobin: t.round_robin,
+                groupCount: t.group_count,
+                scoring: t.scoring || { killPoints: 1, positions: [] },
+                teams: t.teams || [],
+                // We need to parse match results if they are stored as JSON
+                matches: (t.matches || []).map((m: any) => ({
+                    matchId: m.match_id_manual,
+                    results: typeof m.results === 'string' ? JSON.parse(m.results) : m.results
                 }))
-            };
+            }));
 
-            // Try to load saved defaults from localStorage
-            if (browser) {
-                const savedDefaults = localStorage.getItem(DEFAULTS_KEY);
-                if (savedDefaults) {
-                    try {
-                        initialScoring = JSON.parse(savedDefaults);
-                    } catch (e) {
-                        console.error("Failed to parse scoring defaults", e);
-                    }
-                }
-            }
-
-            const t: Tournament = {
-                id,
-                name: payload.name,
-                roundRobin: payload.roundRobin,
-                groupCount: payload.groupCount,
-                teams: [],
-                matches: [],
-                createdAt: new Date().toISOString(),
-                scoring: initialScoring // Use the loaded or default scoring
-            };
-
-            update((list) => [t, ...list]);
-            return id;
+            set(formattedData);
         },
 
-        // 2. New function to save current scoring as default
-        saveDefaultScoring(scoring: { killPoints: number; positions: { place: number; points: number }[] }) {
-            if (browser) {
-                try {
-                    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(scoring));
-                } catch (e) {
-                    console.error("Failed to save scoring defaults", e);
-                }
+        // 2. ADD TOURNAMENT
+        async addTournament(payload: { name: string; roundRobin: boolean; groupCount: number }) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return "";
+
+            // Default Scoring
+            const initialScoring = {
+                killPoints: 1,
+                positions: Array.from({ length: 20 }, (_, i) => ({ place: i + 1, points: 0 }))
+            };
+
+            const { data, error } = await supabase
+                .from('tournaments')
+                .insert({
+                    user_id: user.id,
+                    name: payload.name,
+                    round_robin: payload.roundRobin,
+                    group_count: payload.groupCount,
+                    scoring: initialScoring
+                })
+                .select()
+                .single();
+
+            if (data && !error) {
+                // Add to local store immediately to update UI
+                const newT: Tournament = {
+                    id: data.id,
+                    name: data.name,
+                    createdDate: new Date(data.created_at),
+                    roundRobin: data.round_robin,
+                    groupCount: data.group_count,
+                    scoring: data.scoring,
+                    teams: [],
+                    matches: []
+                };
+                update(list => [newT, ...list]);
+                return data.id;
+            }
+            return "";
+        },
+
+        // 3. REMOVE TOURNAMENT
+        async removeTournament(id: string) {
+            const { error } = await supabase.from('tournaments').delete().eq('id', id);
+            if (!error) {
+                update(list => list.filter(t => t.id !== id));
+            } else {
+                console.error("Delete failed:", error);
             }
         },
 
-        addTeam(
-            tournamentId: string,
-            team: Omit<Team, "id" | "number">
-        ): { ok: boolean; id?: string; error?: string } {
-            let createdId = "";
-            let errorMsg = "";
-
-            update((list) => {
-                const idx = list.findIndex((t) => t.id === tournamentId);
-                if (idx === -1) {
-                    errorMsg = "Tournament not found";
-                    return list;
-                }
-                const t = list[idx];
-
-                // Logic to enforce group assignment
-                const group = t.roundRobin ? (team.group || "A") : null;
-
-                const number = t.teams.length + 1;
-                createdId = typeof crypto !== "undefined" && (crypto as any).randomUUID
-                    ? (crypto as any).randomUUID()
-                    : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-                const newTeam: Team = {
-                    id: createdId,
-                    number,
+        // 4. ADD TEAM
+        async addTeam(tournamentId: string, team: { name: string; tag: string; group?: string; players: string[], logo?: string | null }) {
+            const { data, error } = await supabase
+                .from('teams')
+                .insert({
+                    tournament_id: tournamentId,
                     name: team.name,
                     tag: team.tag,
-                    logo: team.logo,
-                    group,
+                    group: team.group,
                     players: team.players,
-                };
+                    logo: team.logo
+                })
+                .select()
+                .single();
 
-                const next = [...list];
-                next[idx] = { ...t, teams: [...t.teams, newTeam] };
-                return next;
-            });
-
-            if (!createdId) return { ok: false, error: errorMsg || "Failed to create ID" };
-            return { ok: true, id: createdId };
+            if (data && !error) {
+                update(list => list.map(t => {
+                    if (t.id === tournamentId) {
+                        return { ...t, teams: [...t.teams, data] };
+                    }
+                    return t;
+                }));
+            }
         },
 
-        removeTeam(tournamentId: string, teamId: string) {
-            update((list) => {
-                const idx = list.findIndex((t) => t.id === tournamentId);
-                if (idx === -1) return list;
-                const t = list[idx];
-                const filtered = t.teams.filter((x) => x.id !== teamId);
-                const next = [...list];
-                next[idx] = { ...t, teams: filtered };
-                return next;
-            });
+        // 5. REMOVE TEAM
+        async removeTeam(tournamentId: string, teamId: string) {
+            const { error } = await supabase.from('teams').delete().eq('id', teamId);
+            if (!error) {
+                update(list => list.map(t => {
+                    if (t.id === tournamentId) {
+                        return { ...t, teams: t.teams.filter(team => team.id !== teamId) };
+                    }
+                    return t;
+                }));
+            }
         },
 
-        removeTournament(id: string) {
-             update((list) => list.filter((t) => t.id !== id));
+        // 6. SAVE MATCH (Upsert)
+        async saveMatch(tournamentId: string, matchId: number, results: MatchResult[]) {
+            // Because our SQL table has a UNIQUE constraint on (tournament_id, match_id_manual),
+            // we can use .upsert() directly.
+            
+            // First we need to find if this match exists to get its DB ID, OR just rely on the constraint
+            const { error } = await supabase
+                .from('matches')
+                .upsert({
+                    tournament_id: tournamentId,
+                    match_id_manual: matchId,
+                    results: results
+                }, { onConflict: 'tournament_id, match_id_manual' });
+
+            if (error) {
+                console.error("Error saving match:", error);
+                alert("Failed to save match data.");
+            } else {
+                // Update Local Store
+                update(list => list.map(t => {
+                    if (t.id === tournamentId) {
+                        const existingMatchIndex = t.matches.findIndex(m => m.matchId === matchId);
+                        const updatedMatches = [...t.matches];
+                        
+                        if (existingMatchIndex >= 0) {
+                            updatedMatches[existingMatchIndex] = { matchId, results };
+                        } else {
+                            updatedMatches.push({ matchId, results });
+                        }
+                        return { ...t, matches: updatedMatches };
+                    }
+                    return t;
+                }));
+            }
         },
 
-        saveMatch(tournamentId: string, matchId: number, results: MatchResult[]) {
-            update((list) => {
-                const idx = list.findIndex(t => t.id === tournamentId);
-                if (idx === -1) return list;
-                
-                const t = list[idx];
-                // Safety: ensure matches array exists
-                const currentMatches = t.matches || [];
-                
-                const existingMatchIndex = currentMatches.findIndex(m => m.id === matchId);
-                
-                let updatedMatches = [...currentMatches];
-
-                if (existingMatchIndex >= 0) {
-                    // Update
-                    updatedMatches[existingMatchIndex] = {
-                        ...updatedMatches[existingMatchIndex],
-                        results: results
-                    };
-                } else {
-                    // Create
-                    updatedMatches.push({
-                        id: matchId,
-                        name: `Match ${matchId}`,
-                        results: results
-                    });
+        // 7. UPDATE SCORING (Kill Points)
+        async updateKillPoints(id: string, points: number) {
+            // We need to fetch current scoring, update it, and save back
+            // Or ideally, update local state and push to DB.
+            update(list => list.map(t => {
+                if (t.id === id) {
+                    const newScoring = { ...t.scoring, killPoints: points };
+                    
+                    // Fire and forget update to DB (or handle await if strict)
+                    supabase.from('tournaments').update({ scoring: newScoring }).eq('id', id).then();
+                    
+                    return { ...t, scoring: newScoring };
                 }
-                
-                // Keep matches sorted
-                updatedMatches.sort((a, b) => a.id - b.id);
-
-                const next = [...list];
-                next[idx] = { ...t, matches: updatedMatches };
-                return next;
-            });
+                return t;
+            }));
         },
 
-        updateKillPoints(id: string, value: number) {
-            update(list => list.map(t => t.id === id ? { ...t, scoring: { ...t.scoring, killPoints: value } } : t));
-        },
+        // 8. UPDATE SCORING (Position Points)
+        async updatePositionPoints(id: string, positions: { place: number; points: number }[]) {
+            update(list => list.map(t => {
+                if (t.id === id) {
+                    const newScoring = { ...t.scoring, positions };
+                    
+                    supabase.from('tournaments').update({ scoring: newScoring }).eq('id', id).then();
 
-        updatePositionPoints(id: string, positions: { place: number; points: number }[]) {
-            update(list => list.map(t => t.id === id ? { ...t, scoring: { ...t.scoring, positions } } : t));
+                    return { ...t, scoring: newScoring };
+                }
+                return t;
+            }));
         }
-
-    } as const;
+    };
 }
 
 export const tournamentStore = createTournamentStore();

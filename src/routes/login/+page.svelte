@@ -1,15 +1,31 @@
 <script lang="ts">
-    import LeftSideCard from '$lib/components/loginAndSignupLeftCard.svelte'
+    import LeftSideCard from '$lib/components/loginAndSignupLeftCard.svelte';
+    import { supabase } from '$lib/supabaseClient';
     import { goto } from '$app/navigation';
     
     let email = '';
     let password = '';
+    let loading = false;
 
-    const handleLogin = (e: Event) => {
+    const handleLogin = async (e: Event) => {
         e.preventDefault();
-        console.log('Login:', email, password);
-        // Simulate login success
-        goto('/dashboard');
+        loading = true;
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        // console.log(data)
+
+        loading = false;
+
+        if (error) {
+            alert("Login Failed: " + error.message);
+        } else {
+            
+            goto('/dashboard');
+        }
     };
 </script>
 
@@ -66,9 +82,10 @@
                 </div>
 
                 <button
-                    class="w-full py-4 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-black font-['Rajdhani'] text-lg tracking-[0.2em] uppercase shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4"
+                    disabled={loading}
+                    class="w-full py-4 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-black font-['Rajdhani'] text-lg tracking-[0.2em] uppercase shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Initialize Session
+                    {loading ? 'Authenticating...' : 'Initialize Session'}
                 </button>
 
                 <div class="text-center pt-4 border-t border-white/5 mt-6">
