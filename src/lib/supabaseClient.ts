@@ -1,9 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
-// SvelteKit's built-in way to load public env variables
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
 
-if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Supabase URL and Key are missing in .env file');
-}
+// 1. Check if we are in the browser
+const isBrowser = typeof window !== 'undefined'
 
-export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+// 2. Configure the client to handle Server-Side Rendering (SSR)
+export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+  auth: {
+    // Only persist the session if we are in the browser!
+    persistSession: isBrowser,
+    autoRefreshToken: isBrowser,
+    detectSessionInUrl: isBrowser
+  }
+})
+
