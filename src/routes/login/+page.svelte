@@ -107,7 +107,7 @@
 					{:else}
 						<i class="bi bi-discord text-xl"></i>
 						<span>Access via Discord</span>
-					{/if}
+					{/if}             
 				</button>
 
 				<div class="relative flex py-2 items-center">

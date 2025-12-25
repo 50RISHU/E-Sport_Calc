@@ -27,7 +27,7 @@
 
 <div class="min-h-screen text-slate-200 flex flex-col font-['Inter'] selection:bg-cyan-500 selection:text-black relative overflow-hidden">
 	
-	<nav class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full z-10">
+	<nav class="p-3 flex justify-between items-center max-w-7xl mx-auto w-full z-10">
 		<div class="flex items-center gap-4 group cursor-pointer">
 			<div class="relative">
 				<div class="absolute inset-0 bg-cyan-500 rounded-full blur opacity-20 group-hover:opacity-60 transition-opacity"></div>
@@ -40,7 +40,7 @@
 		</div>
 		<button 
 			on:click={getStarted}
-			class="px-6 py-2 border border-cyan-500/30 text-cyan-400 rounded hover:bg-cyan-500/10 hover:text-white hover:border-cyan-400 transition-all font-bold text-sm uppercase tracking-widest font-['Rajdhani']"
+			class="px-2 py-2 mx-2 border border-cyan-500/30 text-cyan-400 rounded hover:bg-cyan-500/10 hover:text-white hover:border-cyan-400 transition-all font-bold text-sm uppercase tracking-widest font-['Rajdhani']"
 		>
 			Open Terminal
 		</button>
