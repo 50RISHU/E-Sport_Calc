@@ -273,7 +273,7 @@
 			{/if}
 
 			<div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
-				<!-- <button
+				<button
 					disabled={saving}
 					class="flex-1 py-4 bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 font-bold font-['Rajdhani'] uppercase tracking-widest rounded-lg border border-white/5 hover:border-cyan-500/30 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
 					on:click={saveConfiguration}
@@ -286,7 +286,7 @@
 					{:else}
 						<i class="bi bi-cloud-arrow-up-fill"></i> Update Configuration
 					{/if}
-				</button> -->
+				</button>
 
 				<button
 					class="flex-[2] py-4 bg-gradient-to-r from-cyan-700 to-cyan-600 hover:from-cyan-600 hover:to-cyan-500 text-white font-black font-['Rajdhani'] text-xl tracking-[0.15em] rounded-lg shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group"
