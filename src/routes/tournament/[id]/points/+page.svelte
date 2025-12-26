@@ -77,7 +77,7 @@
 	async function saveConfiguration() {
 		if (!tournament) return;
 		saving = true;
-		
+
 		// 1. Update the actual Tournament in DB
 		await tournamentStore.updateScoring(tournamentId, localScoring);
 
@@ -182,7 +182,7 @@
 					>
 						<i class="bi bi-cloud-download mr-1"></i> Load Preset
 					</button>
-					
+
 					<button
 						on:click={saveToCloud}
 						class="text-[10px] font-bold text-cyan-500 hover:text-white border border-cyan-500/30 hover:bg-cyan-500/10 px-3 py-2 rounded uppercase tracking-widest transition-all"
@@ -273,7 +273,7 @@
 			{/if}
 
 			<div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
-				<button
+				<!-- <button
 					disabled={saving}
 					class="flex-1 py-4 bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 font-bold font-['Rajdhani'] uppercase tracking-widest rounded-lg border border-white/5 hover:border-cyan-500/30 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
 					on:click={saveConfiguration}
@@ -286,7 +286,7 @@
 					{:else}
 						<i class="bi bi-cloud-arrow-up-fill"></i> Update Configuration
 					{/if}
-				</button>
+				</button> -->
 
 				<button
 					class="flex-[2] py-4 bg-gradient-to-r from-cyan-700 to-cyan-600 hover:from-cyan-600 hover:to-cyan-500 text-white font-black font-['Rajdhani'] text-xl tracking-[0.15em] rounded-lg shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group"
@@ -295,10 +295,17 @@
 						goto(`/tournament/${tournamentId}/teams`);
 					}}
 				>
-					<span class="relative z-10">Manage Teams</span>
-					<div
-						class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"
-					></div>
+					{#if saving}
+						<div
+							class="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"
+						></div>
+						Saving points...
+					{:else}
+						<span class="relative z-10">Manage Teams</span>
+						<div
+							class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"
+						></div>
+					{/if}
 				</button>
 			</div>
 		</div>
