@@ -14,7 +14,6 @@ body {
 
 h1, h2, h3, h4, .gamer-font {
     font-family: 'Rajdhani', sans-serif;
-    text-transform: uppercase;
 }
 
 .gpu-accelerated {

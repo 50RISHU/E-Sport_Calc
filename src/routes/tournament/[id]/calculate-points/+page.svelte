@@ -1,75 +1,106 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation'; 
+	import { goto } from '$app/navigation';
 	import { tournamentStore, type Tournament, type MatchResult } from '$lib/stores/tournamentStore';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { fade, fly, slide } from 'svelte/transition';
-	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabaseClient';
 	import type { Session } from '@supabase/supabase-js';
 
+	// --- INTERFACES ---
+	interface DisplayEntry extends MatchResult {
+		teamName: string;
+		teamGroup: string | null;
+	}
 
 	// --- STATE ---
 	let tournament: Tournament | null = null;
-	
+	let session: Session | null = null;
+	let loading = true;
+
 	// UI Logic
 	let currentMatchId = 1;
 	let selectedTeamId = '';
 	let searchQuery = '';
 	let inputKills: number | null = null;
-	let inputPosition: number | null = null;
+	let inputPlace: number | null = null;
+	
+	// Local Data Buffer
+	let currentEntries: DisplayEntry[] = [];
+	
+	// Image Viewer
 	let uploadedImages: string[] = [];
-
-	// Image Viewer State
 	let viewingImage: string | null = null;
 	let zoomLevel = 1;
 
-	let session: Session | null = null;
-	let loading = true;
-
+	// --- AUTH & INIT ---
 	onMount(async () => {
-		// 1. Check Session
-		const {data, error} = await supabase.auth.getSession();
-
-		if(error || !data.session) {
+		const { data, error } = await supabase.auth.getSession();
+		if (error || !data.session) {
 			goto('/login');
 			return;
 		}
-
 		session = data.session;
 		loading = false;
-	})
-
-	// Display Interface
-	interface DisplayEntry extends MatchResult {
-		teamName: string;
-		teamGroup: string | null;
-	}
-	let currentEntries: DisplayEntry[] = [];
+	});
 
 	// --- STORE SUBSCRIPTION ---
 	const unsubscribe = tournamentStore.subscribe((list) => {
 		const found = list.find((t) => t.id === $page.params.id) ?? null;
 		
 		if (found) {
-			const isNew = !tournament || tournament.id !== found.id;
-			tournament = found;
-			
-			if (isNew) {
-				loadMatchData(currentMatchId);
+			// Check if this is the first time we are loading this tournament
+			if (!tournament || tournament.id !== found.id) {
+				tournament = found;
+
+				// --- NEW LOGIC: AUTO-DETECT NEXT MATCH ---
+				if (tournament.matches && tournament.matches.length > 0) {
+					// Find the highest match ID currently saved
+					const maxId = Math.max(...tournament.matches.map(m => m.matchId));
+					// Set current view to the NEXT match
+					currentMatchId = maxId + 1;
+				} else {
+					// No matches saved yet, start at 1
+					currentMatchId = 1;
+				}
+				
+				loadMatchData(currentMatchId); 
+			} else {
+				// Just update the data reference if we are already on the page
+				tournament = found; 
 			}
 		}
 	});
+
 	onDestroy(unsubscribe);
 
-	// --- HELPERS ---
+	// --- REACTIVITY ---
+	// Only reload data if the Match ID changes manually
+	$: if (currentMatchId && tournament) {
+		loadMatchData(currentMatchId);
+	}
+
+	// Optimized Filter
+	$: filteredTeams = tournament?.teams.filter((t) => {
+		if (!searchQuery) return false;
+		const matchName = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+		const alreadyEntered = currentEntries.some(e => e.teamId === t.id);
+		return matchName && !alreadyEntered;
+	}) ?? [];
+
+
+	// --- CORE LOGIC ---
 
 	function loadMatchData(matchId: number) {
-		currentEntries = [];
 		if (!tournament) return;
 
-		const matches = tournament.matches || [];
-		const match = matches.find(m => m.id === matchId);
+		// Clear inputs
+		selectedTeamId = '';
+		searchQuery = '';
+		inputKills = null;
+		inputPlace = null;
+
+		const match = tournament.matches.find(m => m.matchId === matchId);
 		
 		if (match) {
 			currentEntries = match.results.map(r => {
@@ -79,56 +110,52 @@
 					teamName: team?.name ?? 'Unknown Team',
 					teamGroup: team?.group ?? null
 				};
-			});
+			}).sort((a, b) => a.place - b.place);
+		} else {
+			currentEntries = [];
 		}
 	}
 
-	$: if (tournament && currentMatchId) {
-		loadMatchData(currentMatchId);
-	}
-
-	$: filteredTeams = tournament?.teams.filter((t) => {
-		const matchName = t.name.toLowerCase().includes(searchQuery.toLowerCase());
-		const alreadyEntered = currentEntries.some(e => e.teamId === t.id);
-		return matchName && !alreadyEntered;
-	}) ?? [];
-
-	function calculatePoints(kills: number, pos: number) {
+	function calculatePoints(kills: number, place: number) {
 		if (!tournament) return { k: 0, p: 0, t: 0 };
+		
 		const kPoints = kills * tournament.scoring.killPoints;
-		const pObj = tournament.scoring.positions.find(x => x.place === pos);
+		const pObj = tournament.scoring.positions.find(x => x.place === place);
 		const pPoints = pObj ? pObj.points : 0;
+		
 		return { k: kPoints, p: pPoints, t: kPoints + pPoints };
 	}
 
 	function handleAddOrUpdate() {
-		if (!tournament || !selectedTeamId || inputPosition === null || inputKills === null) {
-			alert("Please select a team and enter Kills/Position");
+		if (!tournament || !selectedTeamId || inputPlace === null || inputKills === null) {
+			alert("Please select a team and enter Kills/Rank");
 			return;
 		}
 
 		const team = tournament.teams.find(t => t.id === selectedTeamId);
 		if (!team) return;
 
-		const { k, p, t } = calculatePoints(inputKills, inputPosition);
+		const { k, p, t } = calculatePoints(inputKills, inputPlace);
 
 		const newEntry: DisplayEntry = {
 			teamId: team.id,
 			teamName: team.name,
-			teamGroup: team.group,
+			teamGroup: team.group ?? null,
 			kills: inputKills,
-			position: inputPosition,
+			place: inputPlace,
 			killPoints: k,
 			placePoints: p,
 			totalPoints: t
 		};
 
+		// Add to top of list
 		currentEntries = [newEntry, ...currentEntries];
 
+		// Reset Inputs
 		selectedTeamId = '';
 		searchQuery = '';
 		inputKills = null;
-		inputPosition = null;
+		inputPlace = null;
 	}
 
 	function removeEntry(teamId: string) {
@@ -139,26 +166,34 @@
 		selectedTeamId = entry.teamId;
 		searchQuery = entry.teamName;
 		inputKills = entry.kills;
-		inputPosition = entry.position;
+		inputPlace = entry.place;
 		removeEntry(entry.teamId);
 	}
 
-	function saveMatch() {
+	async function saveMatch() {
 		if (!tournament) return;
 		
 		const resultsToSave: MatchResult[] = currentEntries.map(e => ({
 			teamId: e.teamId,
 			kills: e.kills,
-			position: e.position,
+			place: e.place,
 			killPoints: e.killPoints,
 			placePoints: e.placePoints,
 			totalPoints: e.totalPoints
 		}));
 
-		tournamentStore.saveMatch(tournament.id, currentMatchId, resultsToSave);
-		alert(`Match ${currentMatchId} saved successfully!`);
+		const success = await tournamentStore.saveMatch(tournament.id, currentMatchId, resultsToSave);
+		
+		if(success) {
+			alert(`Match ${currentMatchId} saved successfully! Moving to next match...`);
+			// Increment to next match automatically
+			currentMatchId++;
+		} else {
+			alert("Error saving match data.");
+		}
 	}
 
+	// --- IMAGE HANDLING ---
 	function handleImageUpload(e: Event) {
 		const input = e.target as HTMLInputElement;
 		if (input.files) {
@@ -167,24 +202,10 @@
 		}
 	}
 
-	function openImage(src: string) {
-		viewingImage = src;
-		zoomLevel = 1;
-	}
-
-	function closeImage() {
-		viewingImage = null;
-		zoomLevel = 1;
-	}
-
-	function zoomIn() {
-		if (zoomLevel < 3) zoomLevel += 0.5;
-	}
-
-	function zoomOut() {
-		if (zoomLevel > 1) zoomLevel -= 0.5;
-	}
-
+	function closeImage() { viewingImage = null; zoomLevel = 1; }
+	function zoomIn() { if (zoomLevel < 3) zoomLevel += 0.5; }
+	function zoomOut() { if (zoomLevel > 1) zoomLevel -= 0.5; }
+	
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') closeImage();
 	}
@@ -193,13 +214,20 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div class="fixed inset-0 bg-[#0a0a0c] -z-50"></div>
-<div class="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] -z-40 pointer-events-none"></div>
-<div class="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-900/20 rounded-full blur-[120px] -z-40 pointer-events-none"></div>
-<div class="fixed inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] -z-30 pointer-events-none"></div>
+<div class="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-3xl -z-40 pointer-events-none"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-900/10 rounded-full blur-3xl -z-40 pointer-events-none"></div>
 
-<div class="min-h-screen text-slate-200 p-4 md:p-6 pb-24 font-['Inter'] relative selection:bg-cyan-500 selection:text-black">
+<div class="min-h-screen text-slate-200 p-4 md:p-6 pb-24 font-['Inter'] relative">
+	
+	<button 
+		on:click={() => goto('/dashboard')} 
+		class="absolute top-6 left-6 hidden md:flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-xs font-bold uppercase tracking-widest font-mono z-20"
+	>
+		<i class="bi bi-arrow-left"></i> Dashboard
+	</button>
+
 	{#if tournament}
-		<div class="max-w-4xl mx-auto space-y-6">
+		<div class="max-w-4xl mx-auto space-y-6 pt-8 md:pt-0">
 
 			<div 
 				class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-2xl relative overflow-hidden"
@@ -232,7 +260,7 @@
 					on:click={saveMatch}
 					class="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold font-['Rajdhani'] tracking-widest uppercase rounded shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all hover:scale-105 active:scale-95"
 				>
-					Save Data
+					Save & Next
 				</button>
 			</div>
 
@@ -243,7 +271,7 @@
 					in:fade={{ duration: 400, delay: 100 }}
 				>
 					<label class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-						<i class="bi bi-images text-cyan-500"></i> Evidence / Screenshots
+						<i class="bi bi-images text-cyan-500"></i> Evidence
 					</label>
 					
 					<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-cyan-500/50 hover:bg-white/[0.02] transition-all group">
@@ -259,7 +287,7 @@
 							{#each uploadedImages as img}
 								<button 
 									class="aspect-video relative rounded overflow-hidden border border-white/10 group focus:outline-none focus:ring-2 focus:ring-cyan-500"
-									on:click={() => openImage(img)}
+									on:click={() => viewingImage = img}
 								>
 									<img src={img} alt="ref" class="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
 									<div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -275,7 +303,7 @@
 					class="lg:col-span-2 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden"
 					in:fade={{ duration: 400, delay: 200 }}
 				>
-					<div class="absolute -top-20 -right-20 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+					<div class="absolute -top-20 -right-20 w-64 h-64 bg-cyan-500/5 rounded-full pointer-events-none"></div>
 
 					<div class="flex justify-between items-end mb-6 relative z-10">
 						<div>
@@ -323,7 +351,7 @@
 						</div>
 						<div>
 							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Rank #</label>
-							<input type="number" bind:value={inputPosition} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all placeholder-gray-800" placeholder="#" />
+							<input type="number" bind:value={inputPlace} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all placeholder-gray-800" placeholder="#" />
 						</div>
 					</div>
 
@@ -348,11 +376,12 @@
 					
 					<div class="flex items-center gap-3">
 						<span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest hidden sm:inline-block">Entries: <span class="text-white">{currentEntries.length}</span></span>
+						
 						<button 
 							on:click={() => goto(`/tournament/${tournament?.id}/table`)}
-							class="text-[10px] font-bold text-black bg-cyan-500 hover:bg-cyan-400 px-3 py-1.5 rounded uppercase tracking-wider transition-colors"
+							class="text-[10px] font-bold text-black bg-cyan-500 hover:bg-cyan-400 px-4 py-2 rounded uppercase tracking-wider transition-colors shadow-lg shadow-cyan-900/20"
 						>
-							Leaderboard
+							<i class="bi bi-table mr-1"></i> Leaderboard
 						</button>
 					</div>
 				</div>
@@ -365,11 +394,11 @@
 						</div>
 					{:else}
 						{#each currentEntries as entry (entry.teamId)}
-							<div class="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group" transition:slide|local>
+							<div class="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
 								
 								<div class="flex items-center gap-4">
 									<div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center font-['Rajdhani'] font-bold text-gray-500 border border-white/5">
-										#{entry.position}
+										#{entry.place}
 									</div>
 									<div>
 										<div class="font-bold text-gray-200 text-lg leading-none font-['Rajdhani'] flex items-center gap-2">
@@ -432,8 +461,6 @@
 		</div>
 
 		<div class="flex-1 overflow-auto bg-[#050505] relative w-full h-full flex p-4 cursor-grab active:cursor-grabbing">
-			<div class="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
-			
 			<img 
 				src={viewingImage} 
 				alt="Zoomed Reference" 
@@ -450,10 +477,4 @@
 	.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 	.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
-
-	.bg-grid-pattern {
-		background-size: 40px 40px;
-		background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-						  linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-	}
-</style>	
+</style>

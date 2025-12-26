@@ -89,7 +89,7 @@
                 <li><a href="/dashboard" class="navlinks hover:text-cyan-400 transition-colors">Dashboard</a></li>
             {/if}
             <li><a href="/" class="navlinks hover:text-cyan-400 transition-colors">About</a></li>
-            <li><a href="/" class="navlinks hover:text-cyan-400 transition-colors">Pricing</a></li>
+            <li><a href="/" class="navlinks hover:text-cyan-400 transition-colors">Store</a></li>
         </ul>
 
         <div class="hidden lg:flex space-x-3 items-center">
@@ -153,7 +153,7 @@
                     <a href="/" class="block py-2 hover:text-cyan-400 border-l-2 border-transparent hover:border-cyan-500 pl-2 transition-all" on:click={closeMenu}>About</a>
                 </li>
                 <li>
-                    <a href="/" class="block py-2 hover:text-cyan-400 border-l-2 border-transparent hover:border-cyan-500 pl-2 transition-all" on:click={closeMenu}>Pricing</a>
+                    <a href="/" class="block py-2 hover:text-cyan-400 border-l-2 border-transparent hover:border-cyan-500 pl-2 transition-all" on:click={closeMenu}>Store</a>
                 </li>
             </ul>
 
@@ -196,7 +196,7 @@
     </div>
 </nav>
 
-<main class="min-h-screen relative overflow-hidden bg-[#0a0a0c]">
+<main class="min-h-screen relative overflow-hidden ">
     <div class="fixed inset-0 bg-[#0a0a0c] -z-50"></div>
     <div
         class="fixed inset-0 -z-45 opacity-5 bg-center bg-repeat pointer-events-none"
@@ -243,7 +243,7 @@
                 </h5>
                 <ul class="space-y-3 text-sm font-medium">
                     <li><a href="/" class="hover:text-cyan-400 transition">Home</a></li>
-                    <li><a href="/" class="hover:text-cyan-400 transition">Pricing</a></li>
+                    <li><a href="/" class="hover:text-cyan-400 transition">Store</a></li>
                     <li><a href="/" class="hover:text-cyan-400 transition">About</a></li>
                 </ul>
             </div>

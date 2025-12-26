@@ -13,7 +13,6 @@
 	let loading = true;
 
 	onMount(async () => {
-		// 1. Check Session
 		const { data, error } = await supabase.auth.getSession();
 
 		if (error || !data.session) {
@@ -22,11 +21,7 @@
 		}
 
 		session = data.session;
-
-		// 2. FETCH DATA (This was missing before)
-		// We wait for this to finish before removing the loading screen
 		await tournamentStore.loadTournaments();
-		
 		loading = false;
 	});
 
@@ -36,9 +31,11 @@
 
 	onDestroy(unsubscribe);
 
+	// --- NAVIGATION ACTIONS ---
 	const addTournament = () => goto('/tournament/create-tournament');
 	const navigateToPoints = (id: string) => goto(`/tournament/${id}/points`);
 	const calculatePoints = (t: Tournament) => goto(`/tournament/${t.id}/calculate-points`);
+	const navigateToAddTeams = (id: string) => goto(`/tournament/${id}/teams`);
 	
 	const deleteTournament = async (id: string) => {
 		if (!confirm('Are you sure you want to delete this tournament? This cannot be undone.')) return;
@@ -110,7 +107,7 @@
 					<div class="relative z-10 flex flex-col justify-between h-full p-6">
 						<div class="flex justify-between items-start">
 							<div>
-								<span class="text-[10px] text-cyan-600 font-mono font-bold tracking-widest uppercase mb-1 block">ID: {t.id.slice(0,4)}</span>
+								<span class="text-[10px] text-cyan-600 font-mono font-bold tracking-widest mb-1 block">ID: {t.id.slice(0,4)}</span>
 								<h3 class="text-2xl font-bold text-white font-['Rajdhani'] leading-tight group-hover:text-cyan-50 transition-colors line-clamp-1">
 									{t.name}
 								</h3>
@@ -133,19 +130,19 @@
 						</div>
 
 						<div class="flex items-center gap-3 pt-4 border-t border-white/5">
-							<button 
+                            <button 
 								on:click={() => openDetails(t)}
 								class="flex-1 py-2 bg-cyan-900/20 hover:bg-cyan-600 text-cyan-400 hover:text-white text-xs font-bold uppercase tracking-wider rounded transition-all duration-200"
 							>
-								Dashboard
+								Roster
 							</button>
-							<button 
+                            <button 
 								on:click={() => calculatePoints(t)}
 								class="flex-1 py-2 bg-purple-900/20 hover:bg-purple-600 text-purple-400 hover:text-white text-xs font-bold uppercase tracking-wider rounded transition-all duration-200"
 							>
 								Calculate
 							</button>
-							<button 
+                            <button 
 								on:click|stopPropagation={() => deleteTournament(t.id)}
 								class="px-3 py-2 bg-red-900/10 hover:bg-red-900/30 text-red-500/50 hover:text-red-400 rounded transition-all"
 							>
@@ -174,7 +171,7 @@
 				<div class="p-8">
 					<div class="flex justify-between items-start mb-6">
 						<div>
-							<h2 class="text-3xl font-bold text-white font-['Rajdhani'] uppercase">{selectedTournament.name}</h2>
+                            <h2 class="text-3xl font-bold text-white font-['Rajdhani']">{selectedTournament.name}</h2>
 							<p class="text-[10px] text-gray-500 font-bold uppercase mt-1">Total Teams: {selectedTournament.teams.length}</p>
 						</div>
 						<button on:click={closeModal} class="text-gray-500 hover:text-white transition">
@@ -223,20 +220,30 @@
 						</div>
 					</div>
 
-					<div class="grid grid-cols-2 gap-3">
-						<button 
-							on:click={() => selectedTournament && navigateToPoints(selectedTournament.id)}
-							class="py-3 bg-white text-black hover:bg-cyan-400 font-bold uppercase tracking-widest rounded shadow-lg transition-all text-xs"
-						>
-							Manage Points
-						</button>
-						<button 
-							on:click={closeModal}
-							class="py-3 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white font-bold uppercase tracking-widest rounded transition-all text-xs"
-						>
-							Close
-						</button>
-					</div>
+                    <div class="flex flex-col gap-3">
+                        <button 
+                            on:click={() => selectedTournament && navigateToAddTeams(selectedTournament.id)}
+                            class="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-bold uppercase tracking-widest rounded shadow-lg transition-all text-xs flex items-center justify-center gap-2"
+                        >
+                            <i class="bi bi-person-plus-fill text-sm"></i> Add / Manage Teams
+                        </button>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button 
+                                on:click={() => selectedTournament && navigateToPoints(selectedTournament.id)}
+                                class="py-3 bg-white text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded shadow-lg transition-all text-xs"
+                            >
+                                Manage Point
+                            </button>
+                            <button 
+                                on:click={closeModal}
+                                class="py-3 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white font-bold uppercase tracking-widest rounded transition-all text-xs"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+
 				</div>
 			</div>
 		</div>
@@ -244,7 +251,6 @@
 </div>
 
 <style>
-	/* Custom Scrollbar for the modal list */
 	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
 	.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }

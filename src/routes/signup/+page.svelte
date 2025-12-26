@@ -60,20 +60,20 @@
         }
     };
 
-    const handleDiscordSignup = async () => {
-        loading = true;
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'discord',
-            options: {
-                redirectTo: `${window.location.origin}/dashboard`
-            }
-        });
+    // const handleDiscordSignup = async () => {
+    //     loading = true;
+    //     const { error } = await supabase.auth.signInWithOAuth({
+    //         provider: 'discord',
+    //         options: {
+    //             redirectTo: `${window.location.origin}/dashboard`
+    //         }
+    //     });
 
-        if (error) {
-            alert("Discord Signup Failed: " + error.message);
-            loading = false;
-        }
-    }
+    //     if (error) {
+    //         alert("Discord Signup Failed: " + error.message);
+    //         loading = false;
+    //     }
+    // }
 </script>
 
 <div class="min-h-screen flex flex-col md:flex-row bg-[#0a0a0c] text-slate-200 font-['Inter'] selection:bg-cyan-500 selection:text-black">
@@ -108,7 +108,7 @@
                     {/if}
                 </button>
 
-                <button
+                <!-- <button
                     on:click={handleDiscordSignup}
                     disabled={loading}
                     class="w-full py-3 rounded-lg bg-white hover:bg-gray-100 text-black font-bold font-['Rajdhani'] text-lg tracking-wider uppercase shadow-lg shadow-white/5 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -119,7 +119,7 @@
                         <i class="bi bi-discord text-xl"></i>
                         <span>Register with Discord</span>
                     {/if}
-                </button>
+                </button> -->
 
                 <div class="relative flex py-2 items-center">
                     <div class="flex-grow border-t border-white/10"></div>

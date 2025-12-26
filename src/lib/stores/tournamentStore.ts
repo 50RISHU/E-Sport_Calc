@@ -72,11 +72,11 @@ function createTournamentStore() {
                 groupCount: t.group_count,
                 scoring: t.scoring || { killPoints: 1, positions: [] },
                 teams: t.teams || [],
-                // We need to parse match results if they are stored as JSON
+                // Parse match results if they are stored as JSON strings
                 matches: (t.matches || []).map((m: any) => ({
                     matchId: m.match_id_manual,
                     results: typeof m.results === 'string' ? JSON.parse(m.results) : m.results
-                }))
+                })).sort((a: Match, b: Match) => a.matchId - b.matchId) // Ensure matches are ordered 1, 2, 3...
             }));
 
             set(formattedData);
@@ -85,12 +85,17 @@ function createTournamentStore() {
         // 2. ADD TOURNAMENT
         async addTournament(payload: { name: string; roundRobin: boolean; groupCount: number }) {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return "";
+            if (!user) return null;
 
             // Default Scoring
             const initialScoring = {
                 killPoints: 1,
-                positions: Array.from({ length: 20 }, (_, i) => ({ place: i + 1, points: 0 }))
+                positions: [
+                    { place: 1, points: 15 }, { place: 2, points: 12 }, { place: 3, points: 10 },
+                    { place: 4, points: 8 },  { place: 5, points: 6 },  { place: 6, points: 4 },
+                    { place: 7, points: 2 },  { place: 8, points: 1 },  { place: 9, points: 1 },
+                    { place: 10, points: 1 }, { place: 11, points: 0 }, { place: 12, points: 0 }
+                ]
             };
 
             const { data, error } = await supabase
@@ -105,8 +110,17 @@ function createTournamentStore() {
                 .select()
                 .single();
 
-            if (data && !error) {
-                // Add to local store immediately to update UI
+            // CHECK FOR DUPLICATE ERROR
+            if (error) {
+                if (error.code === '23505') { // Postgres code for Unique Violation
+                    alert("A tournament with this name already exists!");
+                    return null;
+                }
+                console.error("Error creating tournament:", error);
+                return null;
+            }
+
+            if (data) {
                 const newT: Tournament = {
                     id: data.id,
                     name: data.name,
@@ -120,7 +134,7 @@ function createTournamentStore() {
                 update(list => [newT, ...list]);
                 return data.id;
             }
-            return "";
+            return null;
         },
 
         // 3. REMOVE TOURNAMENT
@@ -142,7 +156,7 @@ function createTournamentStore() {
                     name: team.name,
                     tag: team.tag,
                     group: team.group,
-                    players: team.players,
+                    players: team.players, // Supabase JS client handles string[] -> text[]
                     logo: team.logo
                 })
                 .select()
@@ -155,6 +169,10 @@ function createTournamentStore() {
                     }
                     return t;
                 }));
+                return true;
+            } else {
+                console.error("Add team error:", error);
+                return false;
             }
         },
 
@@ -173,10 +191,6 @@ function createTournamentStore() {
 
         // 6. SAVE MATCH (Upsert)
         async saveMatch(tournamentId: string, matchId: number, results: MatchResult[]) {
-            // Because our SQL table has a UNIQUE constraint on (tournament_id, match_id_manual),
-            // we can use .upsert() directly.
-            
-            // First we need to find if this match exists to get its DB ID, OR just rely on the constraint
             const { error } = await supabase
                 .from('matches')
                 .upsert({
@@ -187,9 +201,8 @@ function createTournamentStore() {
 
             if (error) {
                 console.error("Error saving match:", error);
-                alert("Failed to save match data.");
+                return false;
             } else {
-                // Update Local Store
                 update(list => list.map(t => {
                     if (t.id === tournamentId) {
                         const existingMatchIndex = t.matches.findIndex(m => m.matchId === matchId);
@@ -200,42 +213,93 @@ function createTournamentStore() {
                         } else {
                             updatedMatches.push({ matchId, results });
                         }
+                        // Keep matches sorted by ID
+                        updatedMatches.sort((a, b) => a.matchId - b.matchId);
                         return { ...t, matches: updatedMatches };
+                    }
+                    return t;
+                }));
+                return true;
+            }
+        },
+
+        // 7. DELETE MATCH (NEW)
+        async deleteMatch(tournamentId: string, matchId: number) {
+            const { error } = await supabase
+                .from('matches')
+                .delete()
+                .match({ tournament_id: tournamentId, match_id_manual: matchId });
+
+            if (!error) {
+                update(list => list.map(t => {
+                    if (t.id === tournamentId) {
+                        return { ...t, matches: t.matches.filter(m => m.matchId !== matchId) };
                     }
                     return t;
                 }));
             }
         },
 
-        // 7. UPDATE SCORING (Kill Points)
-        async updateKillPoints(id: string, points: number) {
-            // We need to fetch current scoring, update it, and save back
-            // Or ideally, update local state and push to DB.
-            update(list => list.map(t => {
+        // 8. UPDATE SCORING
+        async updateScoring(id: string, newScoring: { killPoints: number; positions: { place: number; points: number }[] }) {
+             // Optimistic UI Update
+             update(list => list.map(t => {
                 if (t.id === id) {
-                    const newScoring = { ...t.scoring, killPoints: points };
-                    
-                    // Fire and forget update to DB (or handle await if strict)
-                    supabase.from('tournaments').update({ scoring: newScoring }).eq('id', id).then();
-                    
                     return { ...t, scoring: newScoring };
                 }
                 return t;
             }));
+
+            // Background DB Update
+            await supabase.from('tournaments').update({ scoring: newScoring }).eq('id', id);
         },
 
-        // 8. UPDATE SCORING (Position Points)
-        async updatePositionPoints(id: string, positions: { place: number; points: number }[]) {
-            update(list => list.map(t => {
-                if (t.id === id) {
-                    const newScoring = { ...t.scoring, positions };
-                    
-                    supabase.from('tournaments').update({ scoring: newScoring }).eq('id', id).then();
+        // ... previous code ...
 
-                    return { ...t, scoring: newScoring };
-                }
-                return t;
-            }));
+        // 9. LOAD USER PRESETS (NEW)
+        async getUserPresets() {
+            const { data, error } = await supabase
+                .from('scoring_presets')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error("Error loading presets:", error);
+                return [];
+            }
+            return data;
+        },
+
+        // 10. SAVE NEW PRESET (NEW)
+        async savePreset(name: string, scoring: any) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return null;
+
+            const { data, error } = await supabase
+                .from('scoring_presets')
+                .insert({
+                    user_id: user.id,
+                    name: name,
+                    scoring: scoring
+                })
+                .select()
+                .single();
+
+            if (error) {
+                alert("Error saving preset: " + error.message);
+                return null;
+            }
+            return data;
+        },
+
+        // 11. DELETE PRESET (NEW)
+        async deletePreset(id: string) {
+            const { error } = await supabase
+                .from('scoring_presets')
+                .delete()
+                .eq('id', id);
+            
+            return !error;
         }
     };
 }
