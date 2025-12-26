@@ -67,7 +67,7 @@
             tournamentName = '';
             roundRobin = false;
             groupCount = 2;
-            goto(`/tournament/${newId}/teams`);
+            goto(`/tournament/${newId}/points`);
         } else {
             // Failure (Alert is already handled in the store for duplicates)
             // You can add specific UI logic here if you want to show a red error message box
