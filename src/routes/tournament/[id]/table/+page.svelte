@@ -161,7 +161,7 @@
 				class="bg-[#0E0E10]/80 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/10 relative"
 				in:fly={{ y: 20, duration: 500, delay: 100 }}
 			>
-				<div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+				<div class="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-cyan-500/50 to-transparent"></div>
 
 				<div class="grid grid-cols-12 bg-black/40 text-gray-400 text-[10px] md:text-xs font-bold py-4 px-2 md:px-6 uppercase tracking-widest border-b border-white/5 font-mono">
 					<div class="col-span-1 text-center">#</div>
@@ -179,7 +179,7 @@
 						{@const rowGlow = row.rank === 1 ? 'shadow-[inset_0_0_20px_rgba(250,204,21,0.05)]' : ''}
 
 						<div 
-							class="grid grid-cols-12 items-center py-4 px-2 md:px-6 text-sm hover:bg-white/[0.02] transition-colors relative group {rowGlow}"
+							class="grid grid-cols-12 items-center py-4 px-2 md:px-6 text-sm hover:bg-white/2 transition-colors relative group {rowGlow}"
 						>
 							<div class="col-span-1 flex justify-center">
 								<span class="{rankColor} w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded border font-bold font-['Rajdhani'] text-xs md:text-sm shadow-sm transition-all group-hover:scale-110">

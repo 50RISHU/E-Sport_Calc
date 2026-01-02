@@ -94,7 +94,10 @@ function createTournamentStore() {
                     { place: 1, points: 15 }, { place: 2, points: 12 }, { place: 3, points: 10 },
                     { place: 4, points: 8 },  { place: 5, points: 6 },  { place: 6, points: 4 },
                     { place: 7, points: 2 },  { place: 8, points: 1 },  { place: 9, points: 1 },
-                    { place: 10, points: 1 }, { place: 11, points: 0 }, { place: 12, points: 0 }
+                    { place: 10, points: 1 }, { place: 11, points: 0 }, { place: 12, points: 0 },
+                    { place: 13, points: 1 }, { place: 14, points: 0 }, { place: 15, points: 0 },
+                    { place: 16, points: 1 }, { place: 17, points: 0 }, { place: 18, points: 0 },
+                    { place: 19, points: 1 }, { place: 20, points: 0 }, 
                 ]
             };
 
@@ -300,6 +303,22 @@ function createTournamentStore() {
                 .eq('id', id);
             
             return !error;
+        },
+
+        // 12. UPDATE EXISTING PRESET (NEW)
+        async updatePreset(id: string, scoring: any) {
+            const { data, error } = await supabase
+                .from('scoring_presets')
+                .update({ scoring: scoring })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error updating preset:", error);
+                return null;
+            }
+            return data;
         }
     };
 }

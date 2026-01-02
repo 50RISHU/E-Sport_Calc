@@ -8,8 +8,8 @@
 	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabaseClient';
 
-	// FIX 1: Explicitly type 'id'
-	let id: string = '';
+	// Explicitly typed ID handling
+	let id: string = $page.params.id ?? '';
 	let tournament: Tournament | null = null;
 	
 	// Navigation & Auth Logic
@@ -18,6 +18,11 @@
 		if (error || !data.session) {
 			goto('/login');
 			return;
+		}
+		
+		// Ensure data is loaded
+		if ($tournamentStore.length === 0) {
+			await tournamentStore.loadTournaments();
 		}
 	});
 
@@ -29,13 +34,10 @@
 	let teamLogoFile: File | null = null;
 	let selectedGroup = 'A';
 
-	// Reactive ID update
-	$: id = $page.params.id;
-
-	// Store Subscription
+	// Reactive Store Subscription
 	const activeTournament = derived(
 		[tournamentStore, page],
-		([$list, $page]) => $list.find((t) => t.id === $page.params.id) ?? null
+		([$list, $page]) => $list.find((t) => t.id === ($page.params.id ?? '')) ?? null
 	);
 
 	const unsubscribe = activeTournament.subscribe((v) => {
@@ -46,7 +48,7 @@
 	});
 	onDestroy(unsubscribe);
 
-	// Reactive Group Labels (Safe check for tournament existence)
+	// Reactive Group Labels
 	$: groupLabels = (tournament?.roundRobin && tournament.groupCount)
 		? Array.from({ length: tournament.groupCount }, (_, i) => String.fromCharCode(65 + i))
 		: [];
@@ -70,35 +72,46 @@
 	}
 
 	function validateTeam(): string | null {
-		if (!teamName.trim()) return 'Team name is required.';
+		const trimmedName = teamName.trim();
+		if (!trimmedName) return 'Team name is required.';
+		
+		// Uniqueness Check
+		if (tournament && tournament.teams) {
+			const exists = tournament.teams.some(
+				t => t.name.toLowerCase() === trimmedName.toLowerCase()
+			);
+			if (exists) return 'A team with this name already exists in this tournament.';
+		}
+		
 		return null;
 	}
 
-	function addTeam() {
+	async function addTeam() {
 		if (!tournament) return;
 
 		const err = validateTeam();
 		if (err) return alert(err);
 
-		// FIX 2: Fixed 'teamPayload' types. 
-		// 'group' must be 'undefined' (not null) if not in use to match optional Typescript interface.
 		const teamPayload = {
 			name: teamName.trim(),
 			tag: teamTag.trim(),
-			logo: teamLogoFile ? URL.createObjectURL(teamLogoFile) : null, // Store usually accepts string | null here
-			group: tournament.roundRobin ? selectedGroup : undefined, 
+			logo: teamLogoFile ? URL.createObjectURL(teamLogoFile) : null,
+			group: tournament.roundRobin ? selectedGroup : undefined, // Must be undefined, not null
 			players: teamPlayers.filter((p) => p.trim())
 		};
 
-		const res = tournamentStore.addTeam(tournament.id, teamPayload);
+		const res = await tournamentStore.addTeam(tournament.id, teamPayload);
 
-		if (!res) return alert('Failed to add team');
+		if (!res) return alert('Failed to add team. Database error.');
 
 		// Reset Form
 		teamName = '';
 		teamTag = '';
 		teamPlayers = [''];
 		teamLogoFile = null;
+		
+		// Optional: Auto-switch to list if you want instant feedback, or stay to add more
+		// tab = 'entered'; 
 	}
 
 	function deleteTeam(teamId: string) {
@@ -117,7 +130,7 @@
 <div class="min-h-screen text-slate-200 p-4 md:p-6 font-['Inter'] selection:bg-cyan-500 selection:text-black relative">
 	
 	<button
-		on:click={() => goto('/dashboard')}
+		onclick={() => goto('/dashboard')}
 		class="absolute top-6 left-6 hidden md:flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-xs font-bold uppercase tracking-widest font-mono z-20"
 	>
 		<i class="bi bi-arrow-left"></i> Return to Command
@@ -126,26 +139,26 @@
 	<div class="text-center mb-8 relative z-10 pt-12 md:pt-4" in:fly={{ y: -20, duration: 500 }}>
 		<h2 class="text-3xl md:text-4xl font-black text-white font-['Rajdhani'] tracking-widest drop-shadow-lg">
 			{tournament?.name || 'Tournament'}
-			<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Roster</span>
+			<span class="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-purple-500">Roster</span>
 		</h2>
-		<div class="h-1 w-20 bg-gradient-to-r from-transparent via-cyan-500 to-transparent mx-auto mt-2"></div>
+		<div class="h-1 w-20 bg-linear-to-r from-transparent via-cyan-500 to-transparent mx-auto mt-2"></div>
 	</div>
 
 	<div class="max-w-xl mx-auto bg-[#0E0E10]/90 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-white/10 relative overflow-hidden">
-		<div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+		<div class="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-cyan-500/50 to-transparent"></div>
 
 		<div class="flex gap-2 mb-6 bg-black/30 p-1 rounded-lg border border-white/5">
 			<button
 				class="flex-1 py-2 rounded font-bold font-['Rajdhani'] uppercase tracking-widest text-sm transition-all
 				{tab === 'add' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5'}"
-				on:click={() => (tab = 'add')}
+				onclick={() => (tab = 'add')}
 			>
 				<i class="bi bi-plus-lg mr-1"></i> Add Unit
 			</button>
 			<button
 				class="flex-1 py-2 rounded font-bold font-['Rajdhani'] uppercase tracking-widest text-sm transition-all
 				{tab === 'entered' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5'}"
-				on:click={() => (tab = 'entered')}
+				onclick={() => (tab = 'entered')}
 			>
 				Deployed ({tournament?.teams.length ?? 0})
 			</button>
@@ -154,13 +167,14 @@
 		{#if tab === 'add'}
 			<div in:fly={{ y: 10, duration: 300 }} class="space-y-5">
 				<div class="group relative">
-					<label class="block mb-2 text-xs font-bold text-cyan-500 uppercase tracking-widest font-mono">Unit Insignia (Logo)</label>
+					<label class="block mb-2 text-xs font-bold text-cyan-500 uppercase tracking-widest font-mono" for="logo">Unit Insignia (Logo)</label>
 					<div class="relative w-full">
 						<input
 							type="file"
 							accept="image/*"
-							on:change={handleLogoUpload}
+							onchange={handleLogoUpload}
 							class="block w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-cyan-900/30 file:text-cyan-400 hover:file:bg-cyan-900/50 transition-all cursor-pointer bg-black/20 rounded-lg border border-white/5 p-2"
+							id="logo"
 						/>
 					</div>
 					{#if teamLogoFile}
@@ -171,28 +185,32 @@
 				</div>
 
 				<div>
-					<label class="block mb-2 text-xs font-bold text-gray-500 uppercase tracking-widest font-mono">Unit Designation</label>
+					<label class="block mb-2 text-xs font-bold text-gray-500 uppercase tracking-widest font-mono" for="teamName">Unit Designation</label>
 					<input
 						class="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-700 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all font-['Rajdhani'] font-bold text-lg tracking-wide"
 						bind:value={teamName}
+						id="teamName"
 						placeholder="E.g. Red Dragons"
 					/>
 				</div>
 
 				<div class="flex gap-3">
 					<div class="w-1/3">
-						<label class="block mb-2 text-xs font-bold text-gray-500 uppercase tracking-widest font-mono">ID #</label>
+						<label class="block mb-2 text-xs font-bold text-gray-500 uppercase tracking-widest font-mono" for="teamId">ID #</label>
 						<input
 							disabled
 							class="w-full p-3 rounded-lg bg-white/5 text-gray-500 border border-white/5 font-mono text-center font-bold"
+							id="teamId"
 							value={tournament ? (tournament.teams.length + 1).toString().padStart(2, '0') : '01'}
 						/>
 					</div>
 
 					<div class="flex-1">
-						<label class="block mb-2 text-xs font-bold text-gray-500 uppercase tracking-widest font-mono">Tag</label>
+
+						<label class="block mb-2 text-xs font-bold text-gray-500 uppercase tracking-widest font-mono" for="teamTag">Tag</label>
 						<input
 							class="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-700 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all font-mono font-bold"
+							id="teamTag"
 							bind:value={teamTag}
 							placeholder="RDG"
 							maxlength="4"
@@ -205,6 +223,7 @@
 						<div class="absolute -right-4 -top-4 text-cyan-500/10 text-6xl pointer-events-none">
 							<i class="bi bi-grid-3x3"></i>
 						</div>
+						<!-- svelte-ignore a11y_label_has_associated_control -->
 						<label class="block mb-3 text-xs font-bold text-cyan-400 uppercase tracking-widest font-mono">Assign Sector (Group)</label>
 						<div class="flex flex-wrap gap-2 relative z-10">
 							{#each groupLabels as grp}
@@ -213,7 +232,7 @@
 									{selectedGroup === grp
 										? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-110'
 										: 'bg-black/40 text-gray-500 border-white/10 hover:border-cyan-500/50 hover:text-cyan-400'}"
-									on:click={() => (selectedGroup = grp)}
+									onclick={() => (selectedGroup = grp)}
 								>
 									{grp}
 								</button>
@@ -224,6 +243,7 @@
 
 				<div class="bg-black/20 p-4 rounded-xl border border-white/5">
 					<div class="flex justify-between items-center mb-3">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
 						<label class="text-xs font-bold text-gray-500 uppercase tracking-widest font-mono">Squad Members</label>
 						<span class="text-[10px] text-gray-600 font-mono">{teamPlayers.length} / 8 SLOTS</span>
 					</div>
@@ -240,9 +260,10 @@
 									placeholder="Operative Name"
 								/>
 								{#if teamPlayers.length > 1}
+									<!-- svelte-ignore a11y_consider_explicit_label -->
 									<button
 										class="w-10 bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white border border-red-900/30 rounded transition-colors"
-										on:click={() => removePlayerField(i)}
+										onclick={() => removePlayerField(i)}
 									>
 										<i class="bi bi-x-lg"></i>
 									</button>
@@ -253,7 +274,7 @@
 					{#if teamPlayers.length < 8}
 						<button
 							class="mt-3 w-full py-2 border border-dashed border-white/10 text-gray-500 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-900/10 rounded text-xs font-bold uppercase tracking-widest transition-all"
-							on:click={addPlayerField}
+							onclick={addPlayerField}
 						>
 							+ Add Operative
 						</button>
@@ -262,15 +283,15 @@
 
 				<div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-6 border-t border-white/5">
 					<button
-						class="md:col-span-2 py-4 rounded-lg bg-gradient-to-r from-cyan-700 to-cyan-500 hover:from-cyan-600 hover:to-cyan-400 text-white font-black font-['Rajdhani'] text-lg tracking-[0.15em] shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-						on:click={addTeam}
+						class="md:col-span-2 py-4 rounded-lg bg-linear-to-r from-cyan-700 to-cyan-500 hover:from-cyan-600 hover:to-cyan-400 text-white font-black font-['Rajdhani'] text-lg tracking-[0.15em] shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+						onclick={addTeam}
 					>
 						CONFIRM UNIT
 					</button>
 
 					<button
 						class="md:col-span-1 py-4 flex items-center justify-center rounded-lg bg-purple-900/20 hover:bg-purple-600 border border-purple-500/30 text-purple-400 hover:text-white font-bold font-['Rajdhani'] uppercase tracking-widest transition-all text-xs shadow-lg shadow-purple-900/10 group"
-						on:click={() => goto(`/tournament/${id}/points`)}
+						onclick={() => goto(`/tournament/${id}/points`)}
 					>
 						<i class="bi bi-sliders mr-2 group-hover:rotate-180 transition-transform"></i>
 						<span class="whitespace-nowrap">Points</span>
@@ -301,11 +322,12 @@
 
 								{#if groupTeams.length > 0}
 									<div class="grid grid-cols-1 gap-2">
-										{#each groupTeams as t (t.id)}
+										{#each groupTeams as t, i (t.id)}
 											<TeamCard
 												team={t}
+												index={i}
 												showGroup={false}
-												on:delete={(e: CustomEvent) => deleteTeam(e.detail.id)}
+												ondelete={deleteTeam}
 											/>
 										{/each}
 									</div>
@@ -316,12 +338,13 @@
 						{/each}
 					{:else}
 						<div class="grid grid-cols-1 gap-2">
-							{#each tournament.teams as t (t.id)}
-								<TeamCard 
-                                    team={t} 
-                                    showGroup={false} 
-                                    on:delete={(e: CustomEvent) => deleteTeam(e.detail.id)} 
-                                />
+							{#each tournament.teams as t, i (t.id)}
+								<TeamCard 
+                                    team={t} 
+									index={i}
+                                    showGroup={false} 
+                                    ondelete={deleteTeam} 
+                                />
 							{/each}
 						</div>
 					{/if}

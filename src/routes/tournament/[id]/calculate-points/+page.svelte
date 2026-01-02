@@ -233,7 +233,7 @@
 				class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-2xl relative overflow-hidden"
 				in:fly={{ y: -20, duration: 400 }}
 			>
-				<div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-purple-500"></div>
+				<div class="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-cyan-500 to-purple-500"></div>
 
 				<h1 class="text-3xl font-black text-white font-['Rajdhani'] uppercase tracking-wide">
 					Data <span class="text-cyan-500">Entry</span>
@@ -242,12 +242,14 @@
 				<div class="flex items-center gap-4 bg-black/40 p-2 pr-4 rounded-lg border border-white/5">
 					<div class="px-3 py-1 bg-white/5 rounded text-[10px] font-bold text-gray-400 uppercase tracking-widest border border-white/5">Match ID</div>
 					<div class="flex items-center gap-3">
+						<!-- svelte-ignore a11y_consider_explicit_label -->
 						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" 
 							on:click={() => currentMatchId = Math.max(1, currentMatchId - 1)}
 						>
 							<i class="bi bi-dash-lg"></i>
 						</button>
 						<span class="text-2xl font-bold font-['Rajdhani'] text-white min-w-[30px] text-center">{currentMatchId}</span>
+						<!-- svelte-ignore a11y_consider_explicit_label -->
 						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" 
 							on:click={() => currentMatchId++}
 						>
@@ -270,11 +272,12 @@
 					class="lg:col-span-1 bg-[#0E0E10] p-5 rounded-xl border border-white/5 shadow-lg flex flex-col gap-4"
 					in:fade={{ duration: 400, delay: 100 }}
 				>
+					<!-- svelte-ignore a11y_label_has_associated_control -->
 					<label class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
 						<i class="bi bi-images text-cyan-500"></i> Evidence
 					</label>
 					
-					<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-cyan-500/50 hover:bg-white/[0.02] transition-all group">
+					<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-cyan-500/50 hover:bg-white/2 transition-all group">
 						<div class="flex flex-col items-center justify-center pt-5 pb-6">
 							<i class="bi bi-cloud-upload text-2xl text-gray-600 group-hover:text-cyan-400 mb-2 transition-colors"></i>
 							<p class="text-xs text-gray-500 group-hover:text-gray-300">Click to upload</p>
@@ -313,6 +316,7 @@
 					</div>
 					
 					<div class="mb-5 relative z-20">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
 						<label class="text-xs font-bold text-cyan-600 uppercase tracking-widest mb-2 block">Select Unit</label>
 						<div class="relative">
 							<input
@@ -346,10 +350,12 @@
 
 					<div class="grid grid-cols-2 gap-4 mb-6">
 						<div>
+							<!-- svelte-ignore a11y_label_has_associated_control -->
 							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Kill Count</label>
 							<input type="number" bind:value={inputKills} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all placeholder-gray-800" placeholder="0" />
 						</div>
 						<div>
+							<!-- svelte-ignore a11y_label_has_associated_control -->
 							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Rank #</label>
 							<input type="number" bind:value={inputPlace} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all placeholder-gray-800" placeholder="#" />
 						</div>
@@ -357,7 +363,7 @@
 
 					<button 
 						on:click={handleAddOrUpdate} 
-						class="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-cyan-900 hover:to-cyan-800 text-white font-bold font-['Rajdhani'] text-lg tracking-[0.15em] rounded-lg shadow-lg border border-white/5 hover:border-cyan-500/50 transition-all active:scale-[0.98] group"
+						class="w-full py-4 bg-linear-to-r from-gray-800 to-gray-700 hover:from-cyan-900 hover:to-cyan-800 text-white font-bold font-['Rajdhani'] text-lg tracking-[0.15em] rounded-lg shadow-lg border border-white/5 hover:border-cyan-500/50 transition-all active:scale-[0.98] group"
 					>
 						CONFIRM ENTRY <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform inline-block"></i>
 					</button>
@@ -394,7 +400,7 @@
 						</div>
 					{:else}
 						{#each currentEntries as entry (entry.teamId)}
-							<div class="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+							<div class="p-4 flex items-center justify-between hover:bg-white/2 transition-colors group">
 								
 								<div class="flex items-center gap-4">
 									<div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center font-['Rajdhani'] font-bold text-gray-500 border border-white/5">
@@ -460,7 +466,10 @@
 			</div>
 		</div>
 
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div class="flex-1 overflow-auto bg-[#050505] relative w-full h-full flex p-4 cursor-grab active:cursor-grabbing">
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<img 
 				src={viewingImage} 
 				alt="Zoomed Reference" 

@@ -59,7 +59,7 @@
 				
 				<h1 class="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-tight font-['Rajdhani'] uppercase">
 					Manage Protocols.<br />
-					<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-300% animate-gradient">Calculate Victory.</span>
+					<span class="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-300% animate-gradient">Calculate Victory.</span>
 				</h1>
 				
 				<p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 font-medium font-mono">
@@ -68,7 +68,7 @@
 
 				<button 
 					on:click={getStarted}
-					class="group relative inline-flex items-center justify-center px-10 py-5 text-xl font-black text-white transition-all duration-200 bg-gradient-to-r from-cyan-600 to-cyan-500 rounded-lg hover:scale-105 shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] uppercase tracking-widest font-['Rajdhani']"
+					class="group relative inline-flex items-center justify-center px-10 py-5 text-xl font-black text-white transition-all duration-200 bg-linear-to-r from-cyan-600 to-cyan-500 rounded-lg hover:scale-105 shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] uppercase tracking-widest font-['Rajdhani']"
 				>
 					<span class="relative z-10 flex items-center gap-3">
                         Initialize System
@@ -117,6 +117,63 @@
 
 		</div>
 	</section>
+
+	<footer
+    class="bg-[#0E0E10] text-gray-400 pt-12 pb-6 border-t border-white/5 font-['Rajdhani'] relative overflow-hidden"
+>
+    <div class="container mx-auto px-4 relative z-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <div>
+                <h5
+                    class="font-black text-cyan-500 mb-4 text-xl uppercase tracking-widest flex items-center gap-2"
+                >
+                    <i class="bi bi-cpu"></i> EsportCalc // Core
+                </h5>
+                <p class="text-sm leading-relaxed text-gray-500">
+                    Real-time performance metrics and predictive analytics for elite esports.
+                </p>
+            </div>
+
+            <div>
+                <h5
+                    class="font-black text-purple-500 mb-4 text-xl uppercase tracking-widest flex items-center gap-2"
+                >
+                    <i class="bi bi-compass"></i> Access
+                </h5>
+                <ul class="space-y-3 text-sm font-medium">
+                    <li><a href="/" class="hover:text-cyan-400 transition">Home</a></li>
+                    <li><a href="/" class="hover:text-cyan-400 transition">Store</a></li>
+                    <li><a href="/" class="hover:text-cyan-400 transition">About</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h5
+                    class="font-black text-cyan-500 mb-4 text-xl uppercase tracking-widest flex items-center gap-2"
+                >
+                    <i class="bi bi-broadcast"></i> Contact
+                </h5>
+                <div class="space-y-3 text-sm font-medium">
+                    <div class="flex items-center gap-3">
+                        <i class="bi bi-envelope-fill text-purple-400"></i>
+                        <span>rbconnect.official@gmail.com</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="bi bi-phone-fill text-purple-400"></i>
+                        <span>+91 98765 43210</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="border-white/5 mt-10 mb-6" />
+        <div
+            class="flex flex-col md:flex-row justify-between items-center text-xs text-gray-600 font-mono"
+        >
+            <div>© 2025 EsportCalc Systems</div>
+        </div>
+    </div>
+</footer>
 	
 </div>
 

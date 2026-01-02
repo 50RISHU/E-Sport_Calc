@@ -111,11 +111,11 @@
 				</button> -->
 
 				<div class="relative flex py-2 items-center">
-					<div class="flex-grow border-t border-white/10"></div>
-					<span class="flex-shrink-0 mx-4 text-gray-600 text-xs uppercase tracking-widest font-mono"
+					<div class="grow border-t border-white/10"></div>
+					<span class="shrink-0 mx-4 text-gray-600 text-xs uppercase tracking-widest font-mono"
 						>Or Standard Protocol</span
 					>
-					<div class="flex-grow border-t border-white/10"></div>
+					<div class="grow border-t border-white/10"></div>
 				</div>
 
 				<form on:submit={handleLogin} class="space-y-6">
@@ -165,7 +165,7 @@
 
 					<button
 						disabled={loading}
-						class="w-full py-4 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-black font-['Rajdhani'] text-lg tracking-[0.2em] uppercase shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+						class="w-full py-4 rounded-lg bg-linear-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-black font-['Rajdhani'] text-lg tracking-[0.2em] uppercase shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						{loading ? 'Authenticating...' : 'Initialize Session'}
 					</button>
