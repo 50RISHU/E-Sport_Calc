@@ -4,7 +4,6 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { supabase } from '$lib/supabaseClient';
 	import TournamentCard from '$lib/components/TournamentCard.svelte';
-	import TournamentDetailsModal from '$lib/components/TournamentDetailsModal.svelte';
 
 	let tournaments: Tournament[] = [];
 	let selectedTournament: Tournament | null = null;
@@ -119,14 +118,5 @@
 				/>
 			{/each}
 		</div>
-	{/if}
-
-	{#if selectedTournament}
-		<TournamentDetailsModal
-			tournament={selectedTournament}
-			onclose={() => (selectedTournament = null)}
-			onnavigateteams={handleNavigateTeams}
-			onnavigatepoints={handleNavigatePoints}
-		/>
 	{/if}
 </div>
