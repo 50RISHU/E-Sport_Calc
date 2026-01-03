@@ -77,7 +77,6 @@
 
 		// 2. Process Matches (Based on Match Filter)
 		if (tournament.matches) {
-			// Determine which matches to calculate
 			const matchesToProcess = activeMatchFilter === 'overall' 
 				? tournament.matches // Use ALL matches
 				: tournament.matches.filter(m => m.matchId === activeMatchFilter); // Use ONE match
@@ -86,7 +85,6 @@
 				for (const res of match.results) {
 					const teamStats = statsMap.get(res.teamId);
 					
-					// Only update if team exists in map (handles Group filtering)
 					if (teamStats) {
 						teamStats.matchesPlayed++;
 						teamStats.totalKills += res.kills;
@@ -113,10 +111,11 @@
 		return Array.from({ length: tournament.groupCount }, (_, i) => String.fromCharCode(65 + i));
 	});
 
-	// Derived: List of Match IDs for UI
-	const matchIds = $derived(
-		tournament?.matches.map(m => m.matchId).sort((a,b) => a - b) || []
-	);
+	// FIX APPLIED HERE: Safe Derived Match IDs
+	const matchIds = $derived.by(() => {
+		if (!tournament || !tournament.matches) return [];
+		return tournament.matches.map(m => m.matchId).sort((a, b) => a - b);
+	});
 </script>
 
 <div class="fixed inset-0 bg-[#0a0a0c] -z-50"></div>
@@ -198,7 +197,7 @@
 				class="bg-[#0E0E10]/80 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/10 relative"
 				in:fly={{ y: 20, duration: 500, delay: 100 }}
 			>
-				<div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+				<div class="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-cyan-500/50 to-transparent"></div>
 				
 				<div class="bg-black/40 px-6 py-2 border-b border-white/5 flex justify-between items-center">
 					<span class="text-[10px] font-bold font-mono text-gray-500 uppercase tracking-widest">
@@ -241,15 +240,6 @@
 						</div>
 					{/if}
 				</div>
-			</div>
-
-			<div class="flex justify-center mt-8">
-				<a 
-					href={`/tournament/${tournamentId}/dashboard`} 
-					class="px-6 py-3 border border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-gray-400 hover:text-cyan-400 rounded-lg text-xs font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2"
-				>
-					<i class="bi bi-arrow-left"></i> Return to Dashboard
-				</a>
 			</div>
 		</div>
 	{:else}
