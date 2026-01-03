@@ -3,113 +3,61 @@
 	import { goto } from '$app/navigation';
 	import { tournamentStore, type Tournament, type MatchResult } from '$lib/stores/tournamentStore';
 	import { onDestroy, onMount } from 'svelte';
-	import { fade, fly, slide } from 'svelte/transition';
+	import { fly, fade, slide } from 'svelte/transition';
 	import { supabase } from '$lib/supabaseClient';
-	import type { Session } from '@supabase/supabase-js';
+	import ImageUploader from '$lib/components/ImageUploader.svelte';
+	import MatchEntryForm from '$lib/components/MatchEntryForm.svelte';
 
-	// --- INTERFACES ---
-	interface DisplayEntry extends MatchResult {
-		teamName: string;
-		teamGroup: string | null;
-	}
+	let tournamentId = $page.params.id ?? '';
+	let tournament: Tournament | null = $state(null);
+	let currentMatchId = $state(1);
+	let currentEntries: any[] = $state([]);
+	let uploadedImages: string[] = $state([]);
 
-	// --- STATE ---
-	let tournament: Tournament | null = null;
-	let session: Session | null = null;
-	let loading = true;
-
-	// UI Logic
-	let currentMatchId = 1;
-	let selectedTeamId = '';
-	let searchQuery = '';
-	let inputKills: number | null = null;
-	let inputPlace: number | null = null;
-	
-	// Local Data Buffer
-	let currentEntries: DisplayEntry[] = [];
-	
-	// Image Viewer
-	let uploadedImages: string[] = [];
-	let viewingImage: string | null = null;
-	let zoomLevel = 1;
-
-	// --- AUTH & INIT ---
+	// --- LOAD DATA ---
 	onMount(async () => {
 		const { data, error } = await supabase.auth.getSession();
 		if (error || !data.session) {
 			goto('/login');
 			return;
 		}
-		session = data.session;
-		loading = false;
-	});
-
-	// --- STORE SUBSCRIPTION ---
-	const unsubscribe = tournamentStore.subscribe((list) => {
-		const found = list.find((t) => t.id === $page.params.id) ?? null;
-		
-		if (found) {
-			// Check if this is the first time we are loading this tournament
-			if (!tournament || tournament.id !== found.id) {
-				tournament = found;
-
-				// --- NEW LOGIC: AUTO-DETECT NEXT MATCH ---
-				if (tournament.matches && tournament.matches.length > 0) {
-					// Find the highest match ID currently saved
-					const maxId = Math.max(...tournament.matches.map(m => m.matchId));
-					// Set current view to the NEXT match
-					currentMatchId = maxId + 1;
-				} else {
-					// No matches saved yet, start at 1
-					currentMatchId = 1;
-				}
-				
-				loadMatchData(currentMatchId); 
-			} else {
-				// Just update the data reference if we are already on the page
-				tournament = found; 
-			}
+		if ($tournamentStore.length === 0) {
+			await tournamentStore.loadTournaments();
 		}
 	});
 
+	const unsubscribe = tournamentStore.subscribe((list) => {
+		const found = list.find((t) => t.id === tournamentId);
+		if (found) {
+			if (!tournament || tournament.id !== found.id) {
+				tournament = found;
+				// Auto-detect next match
+				if (tournament.matches && tournament.matches.length > 0) {
+					currentMatchId = Math.max(...tournament.matches.map(m => m.matchId)) + 1;
+				} else {
+					currentMatchId = 1;
+				}
+				loadMatchData(currentMatchId);
+			} else {
+				tournament = found;
+			}
+		}
+	});
 	onDestroy(unsubscribe);
 
-	// --- REACTIVITY ---
-	// Only reload data if the Match ID changes manually
-	$: if (currentMatchId && tournament) {
+	// Load entries when match ID changes
+	$effect(() => {
 		loadMatchData(currentMatchId);
-	}
-
-	// Optimized Filter
-	$: filteredTeams = tournament?.teams.filter((t) => {
-		if (!searchQuery) return false;
-		const matchName = t.name.toLowerCase().includes(searchQuery.toLowerCase());
-		const alreadyEntered = currentEntries.some(e => e.teamId === t.id);
-		return matchName && !alreadyEntered;
-	}) ?? [];
-
-
-	// --- CORE LOGIC ---
+	});
 
 	function loadMatchData(matchId: number) {
 		if (!tournament) return;
-
-		// Clear inputs
-		selectedTeamId = '';
-		searchQuery = '';
-		inputKills = null;
-		inputPlace = null;
-
 		const match = tournament.matches.find(m => m.matchId === matchId);
 		
 		if (match) {
 			currentEntries = match.results.map(r => {
 				const team = tournament?.teams.find(t => t.id === r.teamId);
-				return {
-					...r,
-					teamName: team?.name ?? 'Unknown Team',
-					teamGroup: team?.group ?? null
-				};
+				return { ...r, teamName: team?.name ?? 'Unknown', teamGroup: team?.group ?? null };
 			}).sort((a, b) => a.place - b.place);
 		} else {
 			currentEntries = [];
@@ -118,62 +66,40 @@
 
 	function calculatePoints(kills: number, place: number) {
 		if (!tournament) return { k: 0, p: 0, t: 0 };
-		
-		const kPoints = kills * tournament.scoring.killPoints;
-		const pObj = tournament.scoring.positions.find(x => x.place === place);
-		const pPoints = pObj ? pObj.points : 0;
-		
-		return { k: kPoints, p: pPoints, t: kPoints + pPoints };
+		const k = kills * tournament.scoring.killPoints;
+		const pos = tournament.scoring.positions.find(x => x.place === place);
+		const p = pos ? pos.points : 0;
+		return { k, p, t: k + p };
 	}
 
-	function handleAddOrUpdate() {
-		if (!tournament || !selectedTeamId || inputPlace === null || inputKills === null) {
-			alert("Please select a team and enter Kills/Rank");
-			return;
-		}
-
-		const team = tournament.teams.find(t => t.id === selectedTeamId);
+	function addEntry(teamId: string, kills: number, place: number) {
+		if (!tournament) return;
+		const team = tournament.teams.find(t => t.id === teamId);
 		if (!team) return;
 
-		const { k, p, t } = calculatePoints(inputKills, inputPlace);
+		const { k, p, t } = calculatePoints(kills, place);
 
-		const newEntry: DisplayEntry = {
+		const newEntry = {
 			teamId: team.id,
 			teamName: team.name,
 			teamGroup: team.group ?? null,
-			kills: inputKills,
-			place: inputPlace,
+			kills,
+			place,
 			killPoints: k,
 			placePoints: p,
 			totalPoints: t
 		};
 
-		// Add to top of list
 		currentEntries = [newEntry, ...currentEntries];
-
-		// Reset Inputs
-		selectedTeamId = '';
-		searchQuery = '';
-		inputKills = null;
-		inputPlace = null;
 	}
 
 	function removeEntry(teamId: string) {
 		currentEntries = currentEntries.filter(e => e.teamId !== teamId);
 	}
 
-	function editEntry(entry: DisplayEntry) {
-		selectedTeamId = entry.teamId;
-		searchQuery = entry.teamName;
-		inputKills = entry.kills;
-		inputPlace = entry.place;
-		removeEntry(entry.teamId);
-	}
-
 	async function saveMatch() {
 		if (!tournament) return;
-		
-		const resultsToSave: MatchResult[] = currentEntries.map(e => ({
+		const resultsToSave = currentEntries.map(e => ({
 			teamId: e.teamId,
 			kills: e.kills,
 			place: e.place,
@@ -183,58 +109,24 @@
 		}));
 
 		const success = await tournamentStore.saveMatch(tournament.id, currentMatchId, resultsToSave);
-		
 		if(success) {
-			alert(`Match ${currentMatchId} saved successfully! Moving to next match...`);
-			// Increment to next match automatically
+			alert(`Match ${currentMatchId} saved!`);
 			currentMatchId++;
-		} else {
-			alert("Error saving match data.");
 		}
-	}
-
-	// --- IMAGE HANDLING ---
-	function handleImageUpload(e: Event) {
-		const input = e.target as HTMLInputElement;
-		if (input.files) {
-			const newImages = Array.from(input.files).map((file) => URL.createObjectURL(file));
-			uploadedImages = [...uploadedImages, ...newImages];
-		}
-	}
-
-	function closeImage() { viewingImage = null; zoomLevel = 1; }
-	function zoomIn() { if (zoomLevel < 3) zoomLevel += 0.5; }
-	function zoomOut() { if (zoomLevel > 1) zoomLevel -= 0.5; }
-	
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') closeImage();
 	}
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 
 <div class="fixed inset-0 bg-[#0a0a0c] -z-50"></div>
 <div class="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-3xl -z-40 pointer-events-none"></div>
 <div class="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-900/10 rounded-full blur-3xl -z-40 pointer-events-none"></div>
 
 <div class="min-h-screen text-slate-200 p-4 md:p-6 pb-24 font-['Inter'] relative">
-	
-	<button 
-		on:click={() => goto('/dashboard')} 
-		class="absolute top-6 left-6 hidden md:flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-xs font-bold uppercase tracking-widest font-mono z-20"
-	>
-		<i class="bi bi-arrow-left"></i> Dashboard
-	</button>
 
 	{#if tournament}
-		<div class="max-w-4xl mx-auto space-y-6 pt-8 md:pt-0">
+		<div class="max-w-6xl mx-auto space-y-6 pt-8 md:pt-0">
 
-			<div 
-				class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-2xl relative overflow-hidden"
-				in:fly={{ y: -20, duration: 400 }}
-			>
+			<div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-2xl relative overflow-hidden" in:fly={{ y: -20, duration: 400 }}>
 				<div class="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-cyan-500 to-purple-500"></div>
-
 				<h1 class="text-3xl font-black text-white font-['Rajdhani'] uppercase tracking-wide">
 					Data <span class="text-cyan-500">Entry</span>
 				</h1>
@@ -243,150 +135,49 @@
 					<div class="px-3 py-1 bg-white/5 rounded text-[10px] font-bold text-gray-400 uppercase tracking-widest border border-white/5">Match ID</div>
 					<div class="flex items-center gap-3">
 						<!-- svelte-ignore a11y_consider_explicit_label -->
-						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" 
-							on:click={() => currentMatchId = Math.max(1, currentMatchId - 1)}
-						>
-							<i class="bi bi-dash-lg"></i>
-						</button>
+						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" onclick={() => currentMatchId = Math.max(1, currentMatchId - 1)}><i class="bi bi-dash-lg"></i></button>
 						<span class="text-2xl font-bold font-['Rajdhani'] text-white min-w-[30px] text-center">{currentMatchId}</span>
 						<!-- svelte-ignore a11y_consider_explicit_label -->
-						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" 
-							on:click={() => currentMatchId++}
-						>
-							<i class="bi bi-plus-lg"></i>
-						</button>
+						<button class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 flex items-center justify-center transition-all active:scale-95" onclick={() => currentMatchId++}><i class="bi bi-plus-lg"></i></button>
 					</div>
 				</div>
 				
-				<button 
-					on:click={saveMatch}
-					class="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold font-['Rajdhani'] tracking-widest uppercase rounded shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all hover:scale-105 active:scale-95"
-				>
+				<button onclick={saveMatch} class="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold font-['Rajdhani'] tracking-widest uppercase rounded shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all hover:scale-105 active:scale-95">
 					Save & Next
 				</button>
 			</div>
 
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 				
-				<div 
-					class="lg:col-span-1 bg-[#0E0E10] p-5 rounded-xl border border-white/5 shadow-lg flex flex-col gap-4"
-					in:fade={{ duration: 400, delay: 100 }}
-				>
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-						<i class="bi bi-images text-cyan-500"></i> Evidence
-					</label>
-					
-					<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-cyan-500/50 hover:bg-white/2 transition-all group">
-						<div class="flex flex-col items-center justify-center pt-5 pb-6">
-							<i class="bi bi-cloud-upload text-2xl text-gray-600 group-hover:text-cyan-400 mb-2 transition-colors"></i>
-							<p class="text-xs text-gray-500 group-hover:text-gray-300">Click to upload</p>
-						</div>
-						<input type="file" multiple accept="image/*" on:change={handleImageUpload} class="hidden" />
-					</label>
-
-					{#if uploadedImages.length > 0}
-						<div class="grid grid-cols-3 gap-2 overflow-y-auto max-h-40 custom-scrollbar pr-1">
-							{#each uploadedImages as img}
-								<button 
-									class="aspect-video relative rounded overflow-hidden border border-white/10 group focus:outline-none focus:ring-2 focus:ring-cyan-500"
-									on:click={() => viewingImage = img}
-								>
-									<img src={img} alt="ref" class="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
-									<div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-										<i class="bi bi-zoom-in text-white"></i>
-									</div>
-								</button>
-							{/each}
-						</div>
-					{/if}
+				<div class="lg:col-span-1 h-full" in:fade={{ duration: 400, delay: 100 }}>
+					<ImageUploader 
+						bind:images={uploadedImages} 
+						onUpload={(files) => {
+							const newUrls = Array.from(files).map(f => URL.createObjectURL(f));
+							uploadedImages = [...uploadedImages, ...newUrls];
+						}}
+					/>
 				</div>
 
-				<div 
-					class="lg:col-span-2 bg-[#0E0E10] p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden"
-					in:fade={{ duration: 400, delay: 200 }}
-				>
-					<div class="absolute -top-20 -right-20 w-64 h-64 bg-cyan-500/5 rounded-full pointer-events-none"></div>
-
-					<div class="flex justify-between items-end mb-6 relative z-10">
-						<div>
-							<h3 class="text-xl font-bold text-white font-['Rajdhani'] uppercase tracking-wider">Input Result</h3>
-							<p class="text-[10px] text-gray-500 font-mono mt-1">TARGET: MATCH {currentMatchId}</p>
-						</div>
-					</div>
-					
-					<div class="mb-5 relative z-20">
-						<!-- svelte-ignore a11y_label_has_associated_control -->
-						<label class="text-xs font-bold text-cyan-600 uppercase tracking-widest mb-2 block">Select Unit</label>
-						<div class="relative">
-							<input
-								type="text"
-								bind:value={searchQuery}
-								placeholder="SEARCH TEAM NAME..."
-								class="w-full p-4 pl-12 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-mono text-sm uppercase"
-								on:input={() => selectedTeamId = ''} 
-							/>
-							<i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-600"></i>
-							
-							{#if searchQuery && !selectedTeamId}
-								<div class="absolute w-full mt-2 bg-[#151518] border border-white/10 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50 custom-scrollbar">
-									{#if filteredTeams.length > 0}
-										{#each filteredTeams as t}
-											<button
-												class="w-full text-left px-4 py-3 hover:bg-cyan-900/20 border-b border-white/5 last:border-0 flex justify-between items-center group transition-colors"
-												on:click={() => { selectedTeamId = t.id; searchQuery = t.name; }}
-											>
-												<span class="font-bold text-gray-300 group-hover:text-white font-mono">{t.name}</span>
-												{#if t.group}<span class="text-[10px] bg-black/40 text-cyan-600 px-2 py-0.5 rounded border border-white/5">GRP {t.group}</span>{/if}
-											</button>
-										{/each}
-									{:else}
-										<div class="p-3 text-xs text-gray-500 text-center font-mono">NO UNITS FOUND</div>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					</div>
-
-					<div class="grid grid-cols-2 gap-4 mb-6">
-						<div>
-							<!-- svelte-ignore a11y_label_has_associated_control -->
-							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Kill Count</label>
-							<input type="number" bind:value={inputKills} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all placeholder-gray-800" placeholder="0" />
-						</div>
-						<div>
-							<!-- svelte-ignore a11y_label_has_associated_control -->
-							<label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Rank #</label>
-							<input type="number" bind:value={inputPlace} class="w-full p-4 text-center rounded-lg bg-black/40 border border-white/10 text-white text-2xl font-bold font-['Rajdhani'] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all placeholder-gray-800" placeholder="#" />
-						</div>
-					</div>
-
-					<button 
-						on:click={handleAddOrUpdate} 
-						class="w-full py-4 bg-linear-to-r from-gray-800 to-gray-700 hover:from-cyan-900 hover:to-cyan-800 text-white font-bold font-['Rajdhani'] text-lg tracking-[0.15em] rounded-lg shadow-lg border border-white/5 hover:border-cyan-500/50 transition-all active:scale-[0.98] group"
-					>
-						CONFIRM ENTRY <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform inline-block"></i>
-					</button>
+				<div class="lg:col-span-2 h-full" in:fade={{ duration: 400, delay: 200 }}>
+					<MatchEntryForm 
+						currentMatchId={currentMatchId}
+						teams={tournament.teams}
+						entries={currentEntries}
+						onAddEntry={addEntry}
+					/>
 				</div>
 			</div>
 
-			<div 
-				class="bg-[#0E0E10] rounded-xl border border-white/5 shadow-2xl overflow-hidden"
-				in:slide={{ duration: 400, delay: 300 }}
-			>
+			<div class="bg-[#0E0E10] rounded-xl border border-white/5 shadow-2xl overflow-hidden" in:slide={{ duration: 400, delay: 300 }}>
 				<div class="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
 					<div class="flex items-center gap-3">
 						<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
 						<h3 class="font-bold text-white font-['Rajdhani'] uppercase tracking-wider">Live Feed <span class="text-gray-600 ml-2">// MATCH {currentMatchId}</span></h3>
 					</div>
-					
 					<div class="flex items-center gap-3">
 						<span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest hidden sm:inline-block">Entries: <span class="text-white">{currentEntries.length}</span></span>
-						
-						<button 
-							on:click={() => goto(`/tournament/${tournament?.id}/table`)}
-							class="text-[10px] font-bold text-black bg-cyan-500 hover:bg-cyan-400 px-4 py-2 rounded uppercase tracking-wider transition-colors shadow-lg shadow-cyan-900/20"
-						>
+						<button onclick={() => goto(`/tournament/${tournamentId}/table`)} class="text-[10px] font-bold text-black bg-cyan-500 hover:bg-cyan-400 px-4 py-2 rounded uppercase tracking-wider transition-colors shadow-lg shadow-cyan-900/20">
 							<i class="bi bi-table mr-1"></i> Leaderboard
 						</button>
 					</div>
@@ -401,11 +192,8 @@
 					{:else}
 						{#each currentEntries as entry (entry.teamId)}
 							<div class="p-4 flex items-center justify-between hover:bg-white/2 transition-colors group">
-								
 								<div class="flex items-center gap-4">
-									<div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center font-['Rajdhani'] font-bold text-gray-500 border border-white/5">
-										#{entry.place}
-									</div>
+									<div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center font-['Rajdhani'] font-bold text-gray-500 border border-white/5">#{entry.place}</div>
 									<div>
 										<div class="font-bold text-gray-200 text-lg leading-none font-['Rajdhani'] flex items-center gap-2">
 											{entry.teamName}
@@ -424,11 +212,7 @@
 										<div class="text-2xl font-black text-cyan-500 font-['Rajdhani'] leading-none">{entry.totalPoints}</div>
 										<div class="text-[9px] font-bold text-gray-600 uppercase tracking-widest">PTS</div>
 									</div>
-									
-									<div class="flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border-l border-white/10 pl-3">
-										<button on:click={() => editEntry(entry)} class="text-[10px] text-cyan-600 hover:text-cyan-400 font-bold uppercase tracking-wider text-left">EDIT</button>
-										<button on:click={() => removeEntry(entry.teamId)} class="text-[10px] text-red-900 hover:text-red-500 font-bold uppercase tracking-wider text-left">DEL</button>
-									</div>
+									<button onclick={() => removeEntry(entry.teamId)} class="text-[10px] text-red-900 hover:text-red-500 font-bold uppercase tracking-wider text-left border-l border-white/10 pl-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">DEL</button>
 								</div>
 							</div>
 						{/each}
@@ -444,46 +228,3 @@
 		</div>
 	{/if}
 </div>
-
-{#if viewingImage}
-	<div 
-		class="fixed inset-0 z-50 bg-black/95 flex flex-col"
-		transition:fade={{ duration: 150 }}
-	>
-		<div class="flex justify-between items-center p-4 bg-black/80 backdrop-blur-sm z-20 shadow-xl border-b border-white/10">
-			<h2 class="font-bold text-lg font-['Rajdhani'] text-white uppercase tracking-widest flex items-center gap-2">
-				<i class="bi bi-eye text-cyan-500"></i> Visual Intel
-			</h2>
-			<div class="flex items-center gap-3">
-				<div class="flex items-center bg-white/5 rounded-lg border border-white/10">
-					<button on:click={zoomOut} class="w-10 h-9 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition" title="Zoom Out"><i class="bi bi-dash"></i></button>
-					<span class="w-12 text-center font-mono text-xs text-cyan-500 border-x border-white/10">{Math.round(zoomLevel * 100)}%</span>
-					<button on:click={zoomIn} class="w-10 h-9 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition" title="Zoom In"><i class="bi bi-plus"></i></button>
-				</div>
-				<button on:click={closeImage} class="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/30 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all">
-					Close
-				</button>
-			</div>
-		</div>
-
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="flex-1 overflow-auto bg-[#050505] relative w-full h-full flex p-4 cursor-grab active:cursor-grabbing">
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<img 
-				src={viewingImage} 
-				alt="Zoomed Reference" 
-				class="shadow-2xl rounded transition-all duration-200 ease-out m-auto block relative z-10"
-				style="width: {zoomLevel * 100}%; max-width: none; flex-shrink: 0;" 
-				on:click={(e) => e.stopPropagation()}
-			/>
-		</div>
-	</div>
-{/if}
-
-<style>
-	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-	.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-	.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-	.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
-</style>
