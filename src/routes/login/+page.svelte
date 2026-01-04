@@ -162,6 +162,13 @@
 							></i>
 						</div>
 					</div>
+						<p class="text-sm text-gray-500">
+							Forgot Your Password ? <a
+								href="/forgot-password"
+								class="text-purple-400 hover:text-purple-300 font-bold hover:underline transition-colors uppercase tracking-wider text-xs"
+								> Reset it</a
+							>
+						</p>
 
 					<button
 						disabled={loading}
