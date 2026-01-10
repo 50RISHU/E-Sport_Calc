@@ -6,7 +6,7 @@
 
 	onMount(() => {
 		// 1. Get the destination (default to update-password)
-		const next = $page.url.searchParams.get('next') ?? '/update-password';
+		const next = $page.url.searchParams.get('next') ?? '/dashboard';
 
 		// 2. Setup a listener. This fires immediately if the session is already active,
 		//    or as soon as Supabase finishes processing the URL code/hash.

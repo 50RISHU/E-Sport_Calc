@@ -14,9 +14,10 @@
 		"lint": "prettier --check . && eslint ."
 	},
 	"devDependencies": {
+		"@capacitor/cli": "^8.0.0",
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
-		"@sveltejs/adapter-vercel": "^6.2.0",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.48.5",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@tailwindcss/forms": "^0.5.10",
@@ -37,6 +38,9 @@
 		"vite": "^7.2.2"
 	},
 	"dependencies": {
+		"@capacitor/android": "^8.0.0",
+		"@capacitor/app": "^8.0.0",
+		"@capacitor/core": "^8.0.0",
 		"@supabase/supabase-js": "^2.87.3",
 		"bootstrap": "^5.3.8",
 		"bootstrap-icons": "^1.13.1"

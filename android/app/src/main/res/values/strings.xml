@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EsportCalc</string>
+    <string name="title_activity_main">EsportCalc</string>
+    <string name="package_name">com.esportcalc.app</string>
+    <string name="custom_url_scheme">com.esportcalc.app</string>
+</resources>
