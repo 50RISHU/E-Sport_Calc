@@ -11,6 +11,7 @@
 	// Explicitly typed ID handling
 	let id: string = $page.params.id ?? '';
 	let tournament: Tournament | null = null;
+    let isUploading = false; // Add loading state
 	
 	// Navigation & Auth Logic
 	onMount(async () => {
@@ -32,6 +33,7 @@
 	let teamTag = '';
 	let teamPlayers: string[] = [''];
 	let teamLogoFile: File | null = null;
+    let teamLogoPreview: string | null = null; // For local preview
 	let selectedGroup = 'A';
 
 	// Reactive Store Subscription
@@ -58,8 +60,39 @@
 	function handleLogoUpload(e: Event) {
 		const input = e.target as HTMLInputElement;
 		if (!input.files?.length) return;
-		teamLogoFile = input.files[0];
+		
+        teamLogoFile = input.files[0];
+        // Create an immediate local preview
+        teamLogoPreview = URL.createObjectURL(teamLogoFile);
 	}
+
+    // New Function: Upload to Supabase Storage
+    async function uploadToStorage(file: File): Promise<string | null> {
+        try {
+            // Generate a unique file name
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `TeamLogo/${fileName}`; // Upload to TeamLogo folder
+
+            const { error: uploadError } = await supabase.storage
+                .from('Esport') // Bucket Name from your screenshot
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // Get the Public URL
+            const { data } = supabase.storage
+                .from('Esport')
+                .getPublicUrl(filePath);
+
+            return data.publicUrl;
+
+        } catch (error) {
+            console.error('Error uploading logo:', error);
+            alert('Failed to upload logo image.');
+            return null;
+        }
+    }
 
 	function addPlayerField() {
 		if (teamPlayers.length < 8) teamPlayers = [...teamPlayers, ''];
@@ -92,15 +125,31 @@
 		const err = validateTeam();
 		if (err) return alert(err);
 
+        isUploading = true; // Start loading
+        let publicLogoUrl: string | null = null;
+
+        // 1. Upload Logo if exists
+        if (teamLogoFile) {
+            publicLogoUrl = await uploadToStorage(teamLogoFile);
+            // If upload failed, stop the process
+            if (!publicLogoUrl) {
+                isUploading = false;
+                return;
+            }
+        }
+
+        // 2. Save to Database with the real Supabase URL
 		const teamPayload = {
 			name: teamName.trim(),
 			tag: teamTag.trim(),
-			logo: teamLogoFile ? URL.createObjectURL(teamLogoFile) : null,
-			group: tournament.roundRobin ? selectedGroup : undefined, // Must be undefined, not null
+			logo: publicLogoUrl, // Using the public URL
+			group: tournament.roundRobin ? selectedGroup : undefined, 
 			players: teamPlayers.filter((p) => p.trim())
 		};
 
 		const res = await tournamentStore.addTeam(tournament.id, teamPayload);
+        
+        isUploading = false; // Stop loading
 
 		if (!res) return alert('Failed to add team. Database error.');
 
@@ -109,9 +158,7 @@
 		teamTag = '';
 		teamPlayers = [''];
 		teamLogoFile = null;
-		
-		// Optional: Auto-switch to list if you want instant feedback, or stay to add more
-		// tab = 'entered'; 
+        teamLogoPreview = null;
 	}
 
 	function deleteTeam(teamId: string) {
@@ -177,10 +224,13 @@
 							id="logo"
 						/>
 					</div>
-					{#if teamLogoFile}
-						<div class="absolute top-0 right-0 text-green-400 text-xs font-bold animate-pulse flex items-center gap-1 bg-black/50 px-2 py-1 rounded">
-							<i class="bi bi-check-circle-fill"></i> UPLOADED
-						</div>
+					{#if teamLogoPreview}
+                        <div class="mt-2 flex items-center gap-3 bg-white/5 p-2 rounded-lg border border-white/5">
+                            <img src={teamLogoPreview} alt="Preview" class="w-12 h-12 rounded object-cover border border-white/10" />
+                            <div class="text-green-400 text-xs font-bold animate-pulse flex items-center gap-1 bg-black/50 px-2 py-1 rounded">
+                                <i class="bi bi-check-circle-fill"></i> READY
+                            </div>
+                        </div>
 					{/if}
 				</div>
 
@@ -283,10 +333,15 @@
 
 				<div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-6 border-t border-white/5">
 					<button
-						class="md:col-span-2 py-4 rounded-lg bg-linear-to-r from-cyan-700 to-cyan-500 hover:from-cyan-600 hover:to-cyan-400 text-white font-black font-['Rajdhani'] text-lg tracking-[0.15em] shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        disabled={isUploading}
+						class="md:col-span-2 py-4 rounded-lg bg-linear-to-r from-cyan-700 to-cyan-500 hover:from-cyan-600 hover:to-cyan-400 text-white font-black font-['Rajdhani'] text-lg tracking-[0.15em] shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
 						onclick={addTeam}
 					>
-						CONFIRM UNIT
+                        {#if isUploading}
+                            UPLOADING...
+                        {:else}
+						    CONFIRM UNIT
+                        {/if}
 					</button>
 
 					<button
@@ -339,11 +394,11 @@
 					{:else}
 						<div class="grid grid-cols-1 gap-2">
 							{#each tournament.teams as t, i (t.id)}
-								<TeamCard 
-                                    team={t} 
-									index={i}
-                                    showGroup={false} 
-                                    ondelete={deleteTeam} 
+								<TeamCard
+                                    team={t}
+                                    index={i}
+                                    showGroup={false}
+                                    ondelete={deleteTeam}
                                 />
 							{/each}
 						</div>
