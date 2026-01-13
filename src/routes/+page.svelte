@@ -26,25 +26,6 @@
 
 
 <div class="min-h-screen text-slate-200 flex flex-col font-['Inter'] selection:bg-cyan-500 selection:text-black relative overflow-hidden">
-	
-	<nav class="p-3 flex justify-between items-center max-w-7xl mx-auto w-full z-10">
-		<div class="flex items-center gap-4 group cursor-pointer">
-			<div class="relative">
-				<div class="absolute inset-0 bg-cyan-500 rounded-full blur opacity-20 group-hover:opacity-60 transition-opacity"></div>
-				<img src={logo} alt="Logo" class="w-12 h-12 object-contain relative z-10" />
-			</div>
-			<div class="flex flex-col">
-				<span class="font-black text-2xl tracking-widest font-['Rajdhani'] uppercase leading-none">Esport<span class="text-cyan-500">Calc</span></span>
-				<span class="text-[9px] text-gray-500 font-mono tracking-[0.2em] uppercase">Tactical Systems</span>
-			</div>
-		</div>
-		<button 
-			on:click={getStarted}
-			class="px-2 py-2 mx-2 border border-cyan-500/30 text-cyan-400 rounded hover:bg-cyan-500/10 hover:text-white hover:border-cyan-400 transition-all font-bold text-sm uppercase tracking-widest font-['Rajdhani']"
-		>
-			Open Terminal
-		</button>
-	</nav>
 
 	<main class="flex-1 flex flex-col items-center justify-center text-center px-4 mt-8 mb-20 z-10">
 		{#if visible}
@@ -160,7 +141,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <i class="bi bi-phone-fill text-purple-400"></i>
-                        <span>+91 98765 43210</span>
+                        <span>+91 000 000 0000</span>
                     </div>
                 </div>
             </div>

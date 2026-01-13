@@ -12,6 +12,7 @@
 	// Protect this route: User must be "logged in" (via recovery link) to see this
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
+		// If no session exists, they shouldn't be here. Send them to login.
 		if (!session) {
 			goto('/login');
 		}
@@ -30,14 +31,16 @@
 		loading = true;
 		errorMsg = '';
 
-		// Determine if we are updating a specific user or the current session
+		// Update the user's password using the active session (from the email link)
 		const { error } = await supabase.auth.updateUser({ password: password });
 
 		if (error) {
 			errorMsg = error.message;
 			loading = false;
 		} else {
+            // Success!
 			alert("Password updated successfully!");
+            // Redirect to dashboard (user is already logged in)
 			goto('/dashboard');
 		}
 	}

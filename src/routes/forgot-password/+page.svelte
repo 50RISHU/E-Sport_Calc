@@ -2,6 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { goto } from '$app/navigation';
 	import { fly } from 'svelte/transition';
+	import { Capacitor } from '@capacitor/core'; // Import Capacitor
 
 	let email = $state('');
 	let loading = $state(false);
@@ -14,8 +15,20 @@
 		errorMsg = '';
 		message = '';
 
-		// FIX: Point to /auth/callback, and pass /update-password as the 'next' parameter
-		const redirectTo = `${window.location.origin}/auth/callback?next=/update-password`;
+		// 1. DYNAMIC URL GENERATION
+		// If App: Use the Deep Link (com.esportcalc.app://)
+		// If Web: Use the standard URL (https://...)
+		const isApp = Capacitor.isNativePlatform();
+		
+		const baseUrl = isApp
+			? 'com.esportcalc.app://auth/callback' 
+			: `${window.location.origin}/auth/callback`;
+
+		// 2. Append the 'next' destination
+		// This tells the Callback page: "After login, send them to /update-password"
+		const redirectTo = `${baseUrl}?next=/update-password`;
+
+		console.log('Requesting Password Reset with Redirect:', redirectTo); // Debug Log
 
 		const { error } = await supabase.auth.resetPasswordForEmail(email, {
 			redirectTo: redirectTo
