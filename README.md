@@ -1,85 +1,170 @@
-# E-sport
+# 🎮 E-sport
 
-A SvelteKit + Capacitor mobile/web app for managing tournaments and leaderboards.
+A cross-platform **SvelteKit + Capacitor** app for managing esports tournaments, teams, matches, and real-time leaderboards.
 
-## Features
+**Live Demo:** https://esportcalc.vercel.app/
 
-- Tournament creation and management
-- Player/team leaderboards
-- Account signup/login and password reset
-- Android build via Capacitor
+---
 
-## Tech stack
+## 📋 Overview
 
-- Frontend: SvelteKit + Vite
-- Mobile: Capacitor (Android)
-- Auth / DB: Supabase (see `src/lib/supabaseClient.ts`)
-- Styling: Tailwind CSS + Bootstrap
+E-sport is a comprehensive tournament management system designed for competitive gaming. It enables tournament organizers to create tournaments, set up teams, manage match results, and display live leaderboards. The app is built as a responsive web application and is also wrapped for mobile deployment via Capacitor.
 
-## Prerequisites
+## ✨ Core Features
 
-- Node.js 18+ and npm
-- Java JDK + Android SDK (for Android builds)
-- Android Studio (recommended for running on devices/emulators)
+### Tournament Management
+- Create and configure tournaments with custom settings
+- Define tournament structure (teams, participants, scoring)
+- Real-time tournament status tracking
 
-## Setup (local development)
+### Team & Player Management
+- Create and manage teams within tournaments
+- Add players to teams with role assignments
+- Track team performance metrics
 
-1. Clone the repository
+### Match Scheduling & Results
+- Schedule matches and define matchups
+- Record live match results and scores
+- Support for various game formats and scoring systems
+- Automatic leaderboard recalculation
 
-   git clone <repository-url>
-   cd E-sport
+### Leaderboards & Rankings
+- Real-time leaderboard updates
+- Multi-criteria ranking (wins, points, differential)
+- Per-tournament and global statistics
+- Player and team rankings
 
-2. Install dependencies
+### User Authentication
+- Secure signup and login via Supabase Auth
+- Password reset functionality
+- Session management with OAuth support
 
-   npm install
+### Multi-Platform Support
+- Responsive web app (mobile & desktop)
+- Native Android app via Capacitor
+- iOS-ready architecture (Capacitor-compatible)
 
-3. Environment
+---
 
-Create a `.env` (or set env vars for your platform) with at least:
+## 🏗️ Architecture
 
-- `VITE_SUPABASE_URL` — your Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — your Supabase anon/public key
+### Frontend Stack
+- **SvelteKit** — modern reactive component framework with file-based routing
+- **Vite** — lightning-fast build tool and dev server
+- **Tailwind CSS v4** — utility-first styling with responsive design
+- **Bootstrap Icons** — comprehensive icon library
 
-4. Run the dev server
+### Backend & Data
+- **Supabase** — PostgreSQL database + authentication + real-time capabilities
+- **Supabase Client** (`src/lib/supabaseClient.ts`) — singleton pattern for consistent access
+- Real-time subscriptions for live match data
 
-   npm run dev
+### Mobile
+- **Capacitor** — web-to-native bridge for Android/iOS
+- **Android Studio** — build and deploy Android apps
+- Deep linking support for auth callbacks
 
-Scripts available (from `package.json`):
+### State Management
+- **Reactive Stores** (`src/lib/stores/tournamentStore.ts`)
+- Central store for tournaments, teams, matches
+- Custom methods for data mutations and refreshes
+- Automatic reactivity in components
 
-- `npm run dev` — start Vite dev server
-- `npm run build` — build production web assets
-- `npm run preview` — locally preview production build
-- `npm run check` — run type/check tooling
-- `npm run format` — run Prettier
-- `npm run lint` — run Prettier check + ESLint
+---
 
-## Android (Capacitor) build
+## 📁 Project Structure
 
-1. Sync Capacitor and open Android project
+```
+E-sport/
+├── src/
+│   ├── lib/
+│   │   ├── components/           # Reusable UI components
+│   │   │   ├── dashboard/        # Dashboard-specific components
+│   │   │   ├── Navbar.svelte     # Navigation bar
+│   │   │   ├── TournamentCard.svelte
+│   │   │   ├── TeamCard.svelte
+│   │   │   ├── LeaderboardRow.svelte
+│   │   │   ├── MatchEntryForm.svelte
+│   │   │   ├── PointCard.svelte
+│   │   │   ├── ImageUploader.svelte
+│   │   │   └── ...               # Other components
+│   │   ├── stores/
+│   │   │   └── tournamentStore.ts # Central state management
+│   │   ├── supabaseClient.ts      # Supabase client instance
+│   │   ├── images/               # Image assets
+│   │   └── assets/               # Misc assets
+│   ├── routes/                   # SvelteKit file-based routing
+│   │   ├── +layout.svelte        # Global layout wrapper
+│   │   ├── +layout.ts            # Layout configuration
+│   │   ├── +page.svelte          # Home page
+│   │   ├── dashboard/+page.svelte # Dashboard page
+│   │   ├── tournament/
+│   │   │   ├── [id]/+page.svelte    # Tournament detail view
+│   │   │   └── create-tournament/   # Create tournament page
+│   │   ├── auth/
+│   │   │   ├── login/+page.svelte
+│   │   │   ├── signup/+page.svelte
+│   │   │   └── callback/+page.svelte
+│   │   ├── forgot-password/
+│   │   │   └── +page.svelte
+│   │   ├── update-password/
+│   │   │   └── +page.svelte
+│   │   └── layout.css            # Global styles
+│   ├── app.html                  # HTML shell
+│   └── app.d.ts                  # Global TypeScript types
+├── android/                      # Capacitor Android project
+│   ├── app/
+│   ├── gradle/
+│   └── ...                       # Android build files
+├── static/                       # Static assets
+├── build/                        # Production build output
+├── capacitor.config.ts           # Capacitor configuration
+├── vite.config.js                # Vite configuration
+├── svelte.config.js              # SvelteKit configuration
+└── package.json                  # Dependencies & scripts
+```
 
-   npx cap sync android
-   npx cap open android
+---
 
-2. Build & run
+## 🔧 Technology Stack
 
-- Use Android Studio to build and run on emulator or device.
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| **Web Framework** | SvelteKit | 2.48.5 |
+| **Build Tool** | Vite | 7.2.2 |
+| **Component Framework** | Svelte | 5.43.8 |
+| **Styling** | Tailwind CSS | 4.1.17 |
+| **Backend** | Supabase | 2.87.3 |
+| **Mobile** | Capacitor | 8.0.0 |
+| **Auth & DB** | Supabase (PostgreSQL) | - |
+| **Package Manager** | npm | - |
+| **Language** | JavaScript/TypeScript | TS 5.9.3 |
 
-Notes:
+---
 
-- Ensure `android/local.properties` points to your Android SDK.
-- Capacitor settings are in `capacitor.config.ts`.
+## 🌐 Key URL Routes
 
-## Deployment
+| Route | Purpose |
+|-------|---------|
+| `/` | Home landing page |
+| `/login` | User login |
+| `/signup` | New user registration |
+| `/forgot-password` | Password reset request |
+| `/update-password` | Password change page |
+| `/dashboard` | Main tournament dashboard |
+| `/tournament/[id]` | Individual tournament view & management |
+| `/tournament/create-tournament` | Create new tournament |
+| `/auth/callback` | OAuth/email callback handler |
 
-- This project includes a static site adapter and is suitable for Vercel or other static hosts. Use `npm run build` then deploy the `build`/`output` folder as required by your host.
+---
 
-## Project structure (high level)
+## 🔐 Authentication Flow
 
-- `src/` — app source
-  - `lib/` — helpers, `supabaseClient.ts`, components
-  - `routes/` — SvelteKit routes (pages)
-- `android/` — Capacitor Android project
-- `static/` — static assets
+1. **Local Auth** — Email + password login/signup via Supabase
+2. **OAuth** — Optional third-party provider integration
+3. **Session Management** — Client-side session with manual refresh
+4. **Mobile Support** — Deep linking for auth callbacks on Capacitor
+5. **Password Reset** — Email-based password recovery
 
 ---
 
